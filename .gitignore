@@ -1,0 +1,10 @@
+.DS_Store
+.idea
+*.iml
+venv
+*.egg-info/
+.pytest_cache
+__pycache__
+.coverage
+htmlcov
+__service_cache__

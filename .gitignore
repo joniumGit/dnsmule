@@ -8,3 +8,5 @@ __pycache__
 .coverage
 htmlcov
 __service_cache__
+*.txt
+*.csv

@@ -171,8 +171,9 @@ async def main():
         print(f'{getattr(dns_type, "name", dns_type): >15} ADDITIONAL:', response.additional)
 
     def resolve_domain(host):
-        from .querier import resolve_domain_from_certificates
-        print(f'Domains From certificates for ip {host}', resolve_domain_from_certificates(host))
+        from .querier import resolve_domain_from_certificates, subset_domains
+        domains = subset_domains(*resolve_domain_from_certificates(host))
+        print(f'Domains From certificates for ip {host}', domains)
 
     async def a_type(host: str, services: dict):
         from ipaddress import IPv4Address, IPv6Address

@@ -1,6 +1,25 @@
 # DNSMule
 
-Current POC Status:
+#### Analyze domains from DNS:
+
+> python analyze.py -h
+
+```
+usage: analyze.py [-h] [--sub-domain-count SDC] --limit LIMIT [--skip-dump] FILE
+
+positional arguments:
+  FILE
+
+options:
+  -h, --help                        (Help)
+  --sub-domain-count SDC, -sdc SDC  (Shows common subdomains greater than this)
+  --limit LIMIT, -n LIMIT           (Limit to n first records)
+  --skip-dump                       (Skips interactive prompt for dumping records)
+```
+
+> python analyze.py --sub-domain-count 10 --limit 1000 fi-domains.txt
+
+#### Current POC Status:
 
 - Retrieve Google, Microsoft, Amazon public IP JSON files
 - Scan an address for DNS records
@@ -20,3 +39,4 @@ What Could be done:
 - Elisa, Telia, etc
 - Site verification records
 - What kinds of records are available
+

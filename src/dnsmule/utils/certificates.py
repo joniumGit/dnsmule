@@ -1,63 +1,14 @@
-import logging
-from typing import List, Union, Dict
-
-import dns.reversename as reverse_query
-from dns.asyncquery import udp_with_fallback
-from dns.message import Message, make_query
-from dns.name import Name
-from dns.rdatatype import RdataType, is_metatype
-from dns.rrset import RRset
+from dataclasses import dataclass
+from typing import List, Optional
 
 
-class TypeFilter:
-    __slots__ = ['type']
-    type: int
-
-    def __init__(self, __type: int):
-        self.type = __type
-
-    def __call__(self, record: RRset):
-        return bool(record.rdtype & self.type)
+@dataclass
+class Certificate:
+    common: str
+    alts: List[str]
 
 
-async def query(host: Union[str, Name], *types: RdataType, resolver: str = '8.8.8.8') -> Message:
-    _logger = logging.getLogger('dnsmule')
-    for dns_type in types:
-        if not is_metatype(dns_type):
-            _logger.debug('[%s, %s] Starting query', host, dns_type)
-            query = make_query(host, dns_type)
-            response, used_tcp = await udp_with_fallback(query, resolver)
-            if used_tcp:
-                _logger.debug('[%s, %s] Used TCP fallback query', host, dns_type)
-            return response
-
-
-async def query_records(host: Union[str, Name], *types: RdataType, **kwargs) -> Dict[RdataType, List[Name]]:
-    out = {
-        t: []
-        for t in types
-    }
-    for record_type in types:
-        for record in (await query(host, record_type, **kwargs)).answer:
-            if record.rdtype == record_type:
-                out[record_type].extend(record)
-    return out
-
-
-async def a_to_ptr(host: str, **kwargs) -> List[Name]:
-    out = []
-    for value in (await query_records(host, RdataType.A, **kwargs))[RdataType.A]:
-        out.extend(
-            (await query_records(
-                reverse_query.from_address(value.to_text()),
-                RdataType.PTR,
-                **kwargs
-            ))[RdataType.PTR]
-        )
-    return out
-
-
-def collect_certificate_crptography(host: str, port: int):
+def collect_certificate_cryptography(host: str, port: int):
     try:
         import ssl
         from cryptography.x509 import load_pem_x509_certificates
@@ -77,6 +28,8 @@ def collect_certificate_crptography(host: str, port: int):
         }
         return cert
     except IndexError:
+        return None
+    except ImportError:
         return None
     except Exception as e:
         import logging
@@ -122,7 +75,7 @@ def collect_certificate_stdlib(host: str, port: int):
         logging.getLogger('dnsmule').warning('Failed connect to %s:%s (TimeoutError)', host, port)
 
 
-def collect_certificate(host: str, port: int):
+def collect_certificate(host: str, port: int) -> Optional[Certificate]:
     import ssl
     import socket
     host = socket.gethostbyname(host)
@@ -131,20 +84,11 @@ def collect_certificate(host: str, port: int):
     except ssl.SSLError:
         cert = None
     if not cert:
-        try:
-            cert = collect_certificate_crptography(host, port)
-        except ImportError:
-            pass
-    return cert
+        cert = collect_certificate_cryptography(host, port)
+    return Certificate(**cert) if cert else None
 
 
-def resolve_domain_from_certificates(ip: str, port: int = 443) -> List[str]:
-    cert = collect_certificate(ip, port=port)
-    if cert is not None:
-        return [cert['common'], *cert['alts']]
-    else:
-        return []
-
-
-def subset_domains(*domains: str) -> List[str]:
-    return [*{*(d.lstrip('*.') for d in domains), *('.'.join(d.split('.')[-2:]) for d in domains)}]
+__all__ = [
+    'collect_certificate',
+    'Certificate',
+]

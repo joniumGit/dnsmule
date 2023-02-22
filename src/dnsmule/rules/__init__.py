@@ -1,2 +1,2 @@
-from .types import *
 from .rules import rule, process
+from .types import *

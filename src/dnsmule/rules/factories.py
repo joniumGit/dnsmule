@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 from ..rules import rule, Record
 
@@ -7,9 +7,10 @@ def create_regex_rule(
         __rtype__: str,
         name: str,
         pattern: str,
-        identification: str,
+        identification: str = None,
         flags: List[str] = None,
         attribute: str = 'to_text',
+        group: Union[int, str] = None,
 ):
     import re
     import functools
@@ -23,8 +24,10 @@ def create_regex_rule(
     p = re.compile(pattern, flags=flags)
 
     def regex_rule(record: Record):
-        if p.search(str(getattr(record.data, attribute))):
-            return record.identify(f'DNS::REGEX::{identification}')
+        m = p.search(str(getattr(record.data, attribute)))
+        if m:
+            _id = identification if group is None else m.group(group)
+            return record.identify(f'DNS::REGEX::{_id.upper()}')
 
     regex_rule.__name__ = name
 

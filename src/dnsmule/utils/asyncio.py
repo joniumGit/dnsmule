@@ -63,39 +63,7 @@ class ProgressReportingBoundedWorkQueue(BoundedWorkQueue[T]):
             await self._listener(self.progress)
 
 
-def map_async_interactive(
-        work: Iterable[Coroutine[Any, Any, T]],
-        bound: int,
-        listener: Callable[[float], Coroutine[Any, Any, Any]] = None,
-):
-    """Use asyncio to map coroutines using a bounded queue
-
-    note: This is not usable inside already async programs.
-
-    note: This will catch a KeyboardInterrupt as the work cancellation call and will not propagate it
-    """
-    from asyncio import new_event_loop
-
-    if listener is None:
-        queue = BoundedWorkQueue(work, bound)
-    else:
-        queue = ProgressReportingBoundedWorkQueue(work, bound, listener=listener)
-
-    loop = new_event_loop()
-    try:
-        result = loop.run_until_complete(queue.complete())
-    except KeyboardInterrupt:
-        loop.run_until_complete(queue.cancel())
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        result = [*queue.results]
-    finally:
-        loop.close()
-
-    return result
-
-
 __all__ = [
     'BoundedWorkQueue',
     'ProgressReportingBoundedWorkQueue',
-    'map_async_interactive',
 ]

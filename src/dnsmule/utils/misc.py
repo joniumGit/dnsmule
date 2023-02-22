@@ -7,8 +7,11 @@ def resolve_domain_from_certificates(ip: str, port: int = 443) -> List[str]:
     """Returns all names from a certificate retrieved from an ip-address
 
     Common name is the first one if available followed by any alternative names
+
+    >>> resolve_domain_from_certificates('127.0.0.1')
+    []
     """
-    from .certificates import collect_certificate  # Import here for not crashing on doctest
+    from .certificates import collect_certificate  # Import here to not crash on doctest
     cert = collect_certificate(ip, port=port)
     if cert is not None:
         return [cert.common, *cert.alts]
@@ -48,17 +51,43 @@ def group_domains(suffix: str, data: Iterable[str]) -> DOMAIN_GROUP_TYPE:
     return domains
 
 
+def generate_most_common_subdomains(grouped_domains: DOMAIN_GROUP_TYPE, count: int):
+    """Generates first left subdomains more common than the given count
+
+    >>> [*generate_most_common_subdomains({'a.b': ['a.a.b', 'c.a.b', 'a.a.b'], 'b.b.': {'a.b.b'}}, 1)]
+    [('a', 2)]
+    """
+    subdomains = {}
+    for _, domains in grouped_domains.items():
+
+        subs = set()
+        for domain in domains:
+            parts = domain.split('.')
+            if len(parts) > 2:
+                subs.add(parts[-3])
+
+        for sub in subs:
+            if sub in subdomains:
+                subdomains[sub] += 1
+            else:
+                subdomains[sub] = 1
+
+    yield from sorted(filter(lambda t: t[1] > count, subdomains.items()), key=lambda t: t[1], reverse=True)
+
+
 if __name__ == '__main__':
     import doctest
-    import pathlib
 
-    __module__ = str(pathlib.Path(__file__).parent())  # Set this for relative import
+    if globals().get('__package__', None) is None:
+        __package__ = 'dnsmule.utils'
+
     doctest.testmod()
 
 __all__ = [
     'subset_domains',
     'resolve_domain_from_certificates',
     'group_domains',
+    'generate_most_common_subdomains',
     # Types
     'DOMAIN_GROUP_TYPE',
 ]

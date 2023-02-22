@@ -1,2 +1,2 @@
-from .misc import *
 from . import certificates
+from .misc import *

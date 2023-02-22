@@ -6,9 +6,9 @@ from dns.rdata import Rdata as Data
 from dns.rdatatype import RdataType as Type
 from dns.rrset import RRset
 
+from .comaparable import Comparable
 from .data import Record, Result
 from .types import RULE_TYPE
-from .comaparable import Comparable
 
 RULES: Dict[Type, List[RULE_TYPE]] = {
     dtype: []

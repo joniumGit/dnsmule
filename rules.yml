@@ -1,0 +1,68 @@
+version: '0.0.1'
+rules:
+  - o365:
+    type: dns.regex
+    record: txt
+    pattern: '^MS=ms'
+    identification: MICROSOFT::O365
+  - ses:
+    type: dns.regex
+    record: txt
+    pattern: '^amazonses:'
+    identification: AMAZON::SES
+  - azure:
+    type: dns.regex
+    record: txt
+    pattern: '^.*\.azurewebsites\.'
+    identification: MICROSOFT::AZURE
+  - generic_verification:
+    type: dns.regex
+    record: txt
+    patterns:
+      - '^(.+)(?:-(?:site|domain))?-verification='
+      - '^(.+)(?:site|domain)verification'
+      - '^(.+)_verify_'
+      - '^(\w+)-code:'
+    group: 1
+  - record_based_factory:
+    type: dns.factory
+    record: txt
+    processor: |+0
+      def process(record: Record) -> List[Rule]:
+          return [
+              create_rule(
+                  'dns.regex',
+                  Type.TXT,
+                  pattern=r'^conditional logic$',
+                  identification='example',
+              )
+          ] if record.domain == 'example.com' else []
+  - plain_factory:
+    type: dns.factory
+    record: txt
+    processor: |+0
+      some_global_variable = []
+      
+      
+      def create() -> List[Rule]:
+          some_global_variable[0] = 1
+          return [
+              create_rule(
+                  'dns.regex',
+                  Type.TXT,
+                  pattern=fr'^factory logic {i}$',
+                  identification='example',
+              ) for i in range(10)
+          ]
+      
+      
+      def process(record: Record) -> List[Rule]:
+          assert some_global_variable[0] == 1
+          return [
+              create_rule(
+                  'dns.regex',
+                  Type.TXT,
+                  pattern=r'^conditional logic$',
+                  identification='example',
+              )
+          ] if record.domain == 'example.com' else []

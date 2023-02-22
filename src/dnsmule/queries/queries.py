@@ -4,8 +4,8 @@ from typing import List, Union, Dict
 from dns.asyncquery import udp_with_fallback
 from dns.message import Message, make_query
 from dns.name import Name
-from dns.rdatatype import RdataType, is_metatype
 from dns.rdata import Rdata
+from dns.rdatatype import RdataType, is_metatype
 
 from ..config import defaults
 

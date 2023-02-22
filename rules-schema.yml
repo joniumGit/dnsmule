@@ -1,0 +1,169 @@
+$id: /dnsmule/rules
+type: object
+title: DNSMule rule definition
+description: |+2
+  This file is used to define rules and configuration for DNSMule
+
+  The general rule resolution flow goes as follows:
+  - Create factory type rules without parameters
+  - Create other rules from definition file
+  - Gather data
+  - Create factory type rules with Record parameter
+  - Run data through the rules
+required:
+  - version
+  - rules
+properties:
+  version:
+    type: string
+    pattern: ^\d+(?:\.\d+){0,2}$
+  rules:
+    $ref: '#/definitions/rules'
+definitions:
+  rules:
+    type: array
+    uniqueItems: true
+    items:
+      anyOf:
+        - $ref: "#/definitions/rule"
+        - $ref: "#/definitions/dns.regex"
+        - $ref: "#/definitions/dns.preprocess"
+  rule:
+    type: object
+    additionalProperties: true
+    title: DNSMule rule
+    description:
+      Any additional properties are passed to the respective rule type factory to produce the rule instance.
+      See the concrete subtypes for parameters.
+    required:
+      - type
+      - record
+    properties:
+      type:
+        type: string
+        pattern: ^\w+(?:\.\w++)$
+        title: DNSMule module for rule creation
+      record:
+        type: string
+        pattern: ^\w+$|^\*$
+        title: DNS Record type for this rule
+        description:
+          See the full IANA list of record types
+          https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml
+  dns.regex.base:
+    title: Matches DNS records with regex
+    allOf:
+      - $ref: "/#definitions/rule"
+      - type: object
+        additionalProperties: true
+        required:
+          - pattern
+        properties:
+          type:
+            type: string
+            const: dns.regex
+            title: Matches DNS records with regex
+        oneOf:
+          - type: object
+            properties:
+              pattern:
+                type: string
+                title: Python style regex for specifying the match
+                description:
+                  The regex can contain one capture group for capturing the identification property.
+                  In this case the group property has to be specified. Otherwise identification is used.
+                x-intellij-language-injection: PythonRegExp
+          - type: object
+            properties:
+              patterns:
+                type: array
+                items:
+                  type: string
+                  title: Python style regular expressions for specifying the match
+                  description:
+                    The regex can contain one capture group for capturing the identification property.
+                    In this case the group property has to be specified. Otherwise identification is used.
+                  x-intellij-language-injection: PythonRegExp
+  dns.regex:
+    oneOf:
+      - type: object
+        additionalProperties: false
+        allOf:
+          - $ref: '#/definitions/dns.regex.base'
+          - type: object
+            required:
+              - identification
+            properties:
+              identification:
+                type: string
+                pattern: ^\w+$
+                title: Service identification tag
+                description:
+                  This will be appended to the end as DNS::REGEX::identification.upper()
+      - type: object
+        additionalProperties: false
+        allOf:
+          - $ref: '#/definitions/dns.regex.base'
+          - type: object
+            required:
+              - group
+            properties:
+              group:
+                type:
+                  - integer
+                  - string
+                minimum: 1
+                minLength: 1
+                title: Service identification tag
+                description:
+                  This will be appended to the end as DNS::REGEX::mathc.group(group).upper()
+  dns.preprocess:
+    allOf:
+      - $ref: '#/definitions/rule'
+      - type: object
+        title: Complex Factory for Rules
+        required:
+          - processor
+        properties:
+          type:
+            type: string
+            const: dns.factory
+          processor:
+            type: string
+            title: Creates rules by invoking python code
+            description: |+2
+              It is possible to define rules in two ways:
+            
+              As a plain factory:
+            
+                def create():
+                  return [ create_rule(...) ] # Returns a list of rules 
+            
+              As a record based factory
+            
+                def process(record):
+                  return [ create_rule(...) ] # Again a list of rules
+            
+              The only globals passed to these functions are objects available from:
+              - __builtins__
+              - from dnsmule.rules.factories import create_rule, Record, RULE_TYPE as Rule, Type
+              - from typing import List
+            
+              When the code is evaluated the result is inspected for:
+              - create function without parameters
+              - process function with a single parameter
+            
+              It is possible to set globals in the create function as the context persists between calls.
+            
+              Some notes:
+              - The create function is invoked exactly once.
+              - The process function is invoked exactly once for every single Record.
+              - The rules returned from the process function will be invoked for every single record.
+              - It is not guaranteed that recursion works if a dns.factory rule is returned
+            x-intellij-language-injection:
+              language: Python
+              prefix: |+0
+                from dnsmule.rules.factories import create_rule, Record, RULE_TYPE as Rule, Type
+                from typing import List
+
+              suffix: ''

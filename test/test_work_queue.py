@@ -25,11 +25,11 @@ async def test_queue_results():
         return 1
 
     async def item_2():
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.3)
         return 2
 
     async def item_3():
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0.1)
         return 3
 
     queue = BoundedWorkQueue([item_1(), item_2(), item_3()], bound=10_000)
@@ -37,12 +37,45 @@ async def test_queue_results():
 
 
 @async_test
-async def test_queue_results_bounded():
+async def test_queue_results_bounded_return_order_1():
     """Tests return order on bounded queue
+
+    State:
+    22233
+    1111
+
+    Result: 2, 1, 3
     """
 
     async def item_1():
+        await asyncio.sleep(0.4)
+        return 1
+
+    async def item_2():
         await asyncio.sleep(0.3)
+        return 2
+
+    async def item_3():
+        await asyncio.sleep(0.2)
+        return 3
+
+    queue = BoundedWorkQueue([item_1(), item_2(), item_3()], bound=2)
+    assert (await queue.complete()) == [2, 1, 3]
+
+
+@async_test
+async def test_queue_results_return_order_2():
+    """Tests return order on bounded queue when one task takes long
+
+    State:
+    111111
+    2233
+
+    Result: 2, 3, 1
+    """
+
+    async def item_1():
+        await asyncio.sleep(0.6)
         return 1
 
     async def item_2():
@@ -50,11 +83,11 @@ async def test_queue_results_bounded():
         return 2
 
     async def item_3():
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.2)
         return 3
 
-    queue = BoundedWorkQueue([item_1(), item_2(), item_3()], bound=2)
-    assert (await queue.complete()) == [2, 1, 3]
+    queue = BoundedWorkQueue([item_2(), item_1(), item_3()], bound=2)
+    assert (await queue.complete()) == [2, 3, 1]
 
 
 @async_test

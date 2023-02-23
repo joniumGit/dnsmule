@@ -2,14 +2,12 @@ from typing import cast
 
 import pytest
 
-from dnsmule.rules.rules import Rule, RULES, rule, Type, add_rule, Result, Record
+from dnsmule.rules.rules import Rule, Type, Result, Record, Rules
 
 
-@pytest.fixture(autouse=True)
-def clear_rules():
-    RULES.clear()
-    yield
-    RULES.clear()
+@pytest.fixture
+def rules():
+    yield Rules()
 
 
 def dummy(_: Record) -> Result:
@@ -45,20 +43,36 @@ def test_rules_rule_ordering_with_changes():
     assert data == [r0, r1]
 
 
-def test_rules_rule_name():
-    @rule.CNAME
+def test_rules_rule_name(rules):
+    @rules.CNAME
     def my_cool_rule():
         pass
 
-    assert 'name=my_cool_rule' in str(RULES[Type.CNAME].pop())
+    assert 'f=my_cool_rule' in str(rules[Type.CNAME].pop())
 
 
-def test_rules_rule_unknown_type():
+def test_rules_rule_unknown_type(rules):
     unknown = cast(Type, 13213213123)
 
     def unknown_type():
         pass
 
-    add_rule(unknown, 0)(unknown_type)
+    rules.add_rule(unknown, 0)(unknown_type)
 
-    assert 'name=unknown_type' in str(RULES[unknown].pop())
+    assert 'f=unknown_type' in str(rules[unknown].pop())
+
+
+def test_rules_factory_operation(rules):
+    @rules.register('test')
+    def my_cool_rule(name: str):
+        assert name == 'hello_world'
+
+    rules.load_config([
+        {
+            'type': 'test',
+            'record': 'TXT',
+            'name': 'hello_world',
+        }  # TODO: FIx this name thingy to be better from yaml and add it to rule
+    ])
+
+    assert rules[Type.TXT].pop().f is None

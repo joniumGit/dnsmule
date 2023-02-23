@@ -1,25 +1,26 @@
 from typing import List, Union
 
-from ..rules import rule, Record
+from .dynamic import DynamicRule
+from .types import RULE_TYPE, Record
+from .rules import Rules
 
 
-def create_regex_rule(
-        __rtype__: str,
+def dns_create_regex_rule(
         name: str,
         pattern: str,
         identification: str = None,
         flags: List[str] = None,
         attribute: str = 'to_text',
         group: Union[int, str] = None,
-):
+) -> RULE_TYPE:
     import re
     import functools
     import operator
 
-    all_flags = {**re.RegexFlag.__members__}
+    all_flags = {k.lower(): v for k, v in re.RegexFlag.__members__.items()}
     flags = functools.reduce(
         operator.or_,
-        (all_flags[flag] for flag in flags if flag in all_flags),
+        (all_flags[flag.lower()] for flag in flags if flag in all_flags),
     )
     p = re.compile(pattern, flags=flags)
 
@@ -30,14 +31,23 @@ def create_regex_rule(
             return record.identify(f'DNS::REGEX::{_id.upper()}')
 
     regex_rule.__name__ = name
+    regex_rule.__type__ = 'dns.regex'
 
-    getattr(rule, __rtype__)(regex_rule)
-
-
-MAPPING = {
-    'dns.regex': create_regex_rule
-}
+    return regex_rule
 
 
-def create_rule(rule_type: str, record_type: str, **options) -> None:
-    return MAPPING[rule_type](__rtype__=record_type, **options)
+def dns_create_dynamic_rule(
+        name: str,
+        code: str,
+):
+    return DynamicRule(name, code)
+
+
+def add_default(rules: Rules) -> None:
+    rules.register('dns.dynamic', dynamic=True)(dns_create_dynamic_rule)
+    rules.register('dns.regex')(dns_create_regex_rule)
+
+
+__all__ = [
+    'add_default',
+]

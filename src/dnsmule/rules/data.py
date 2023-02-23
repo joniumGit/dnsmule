@@ -18,13 +18,22 @@ class Result:
         self.tags = []
         self.data = {}
 
-    def merge(self, other: 'Result') -> 'Result':
+    def __getitem__(self, item):
+        return self.data[item]
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
+    def __add__(self, other: 'Result') -> 'Result':
         r = Result(self.type)
         r.tags.extend(self.tags)
         r.tags.extend(other.tags)
         r.data.update(self.data)
         r.data.update(other.data)
         return r
+
+    def __bool__(self):
+        return self.tags or self.data
 
 
 @dataclass

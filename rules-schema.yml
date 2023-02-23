@@ -27,7 +27,7 @@ definitions:
       anyOf:
         - $ref: "#/definitions/rule"
         - $ref: "#/definitions/dns.regex"
-        - $ref: "#/definitions/dns.preprocess"
+        - $ref: "#/definitions/dns.dynamic"
   rule:
     type: object
     additionalProperties: true
@@ -50,6 +50,11 @@ definitions:
         description:
           See the full IANA list of record types
           https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml
+      priority:
+        type: integer
+        minimum: 0
+        default: 0
+        title: Rule priority
   dns.regex.base:
     title: Matches DNS records with regex
     allOf:
@@ -63,6 +68,19 @@ definitions:
             type: string
             const: dns.regex
             title: Matches DNS records with regex
+          flags:
+            type: array
+            default: [ ]
+            items:
+              type: string
+              title: Python RegExp flags
+          attribute:
+            type: string
+            default: to_text
+            title: DNS Record attribute to use for regex match
+            description: |
+              This can be used to used an alternative attribute for regex match instead of to_text.
+              Alternatives can be checked from dnspython docs for response record types.
         oneOf:
           - type: object
             properties:
@@ -117,53 +135,62 @@ definitions:
                 title: Service identification tag
                 description:
                   This will be appended to the end as DNS::REGEX::mathc.group(group).upper()
-  dns.preprocess:
+  dns.dynamic:
     allOf:
       - $ref: '#/definitions/rule'
       - type: object
         title: Complex Factory for Rules
         required:
-          - processor
+          - code
         properties:
           type:
             type: string
-            const: dns.factory
-          processor:
+            const: dns.dynamic
+          code:
             type: string
             title: Creates rules by invoking python code
             description: |+2
-              It is possible to define rules in two ways:
+              It is possible to define dynamic rules with two methods:
             
-              As a plain factory:
+              As a plain factory for dynamically creating rules:
             
-                def create():
-                  return [ create_rule(...) ] # Returns a list of rules 
+                def initialize() -> None:
+                    add_rule(Type.TXT, ...)
             
-              As a record based factory
+              As a normal rule which is evaluated dynamically:
             
-                def process(record):
-                  return [ create_rule(...) ] # Again a list of rules
+                def process(record) -> Optional[Result]:
+                    add_rule(...)
+                    return record.result()
             
               The only globals passed to these functions are objects available from:
               - __builtins__
-              - from dnsmule.rules.factories import create_rule, Record, RULE_TYPE as Rule, Type
-              - from typing import List
+              - from typing import List, Callable, Optional
+              - from .data import Type, Record, Result
+              - from .types import RULE_TYPE as Rule
+              - add_rule, see below
             
               When the code is evaluated the result is inspected for:
-              - create function without parameters
+              - initialize function without parameters
               - process function with a single parameter
             
-              It is possible to set globals in the create function as the context persists between calls.
+              It is possible to set globals in the initialize function as the context persists between calls.
             
               Some notes:
-              - The create function is invoked exactly once.
+              - The initialize function is invoked exactly once.
               - The process function is invoked exactly once for every single Record.
-              - The rules returned from the process function will be invoked for every single record.
-              - It is not guaranteed that recursion works if a dns.factory rule is returned
+              - The rules returned from the initialize will be invoked for every suitable record.
+              - The rules returned from the process will be invoked for every suitable record after adding it.
+              - It is not guaranteed that recursion works if a new dynamic rule is added
             x-intellij-language-injection:
               language: Python
               prefix: |+0
-                from dnsmule.rules.factories import create_rule, Record, RULE_TYPE as Rule, Type
-                from typing import List
+                from typing import List, Callable, Optional
+
+                from dnsmule.rules.data import Type, Record, Result
+                from dnsmule.rules.types import RULE_TYPE as Rule
+                
+                def add_rule(record: Type, rule_type: str, priority: int = 0, **options):
+                    pass
 
               suffix: ''

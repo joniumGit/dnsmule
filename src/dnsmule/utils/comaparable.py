@@ -1,35 +1,45 @@
+SORT_KEY = '_sort_key'
+
+
 class ComparisonMixinBase:
-    __sort_key__: str
+    _sort_key: str
 
     def __lt__(self, other):
-        return self.__sort_key__ < other.__sort_key__
+        return self._sort_key < other._sort_key
 
     def __gt__(self, other):
-        return self.__sort_key__ > other.__sort_key__
+        return self._sort_key > other._sort_key
 
     def __ge__(self, other):
-        return self.__sort_key__ >= other.__sort_key__
+        return self._sort_key >= other._sort_key
 
     def __le__(self, other):
-        return self.__sort_key__ <= other.__sort_key__
+        return self._sort_key <= other._sort_key
 
 
 class Comparable(type):
     def __new__(mcs, name, bases, attrs, key: str = None, reverse: bool = False):
         if not key:
+            if any(map(lambda b: isinstance(b, Comparable), bases)):
+                return super().__new__(
+                    mcs,
+                    name,
+                    bases,
+                    attrs,
+                )
             raise ValueError('nothing to compare by')
 
         if reverse:
             class ComparisonMixin(ComparisonMixinBase):
                 def __getattribute__(self, item):
-                    if item == '__sort_key__':
+                    if item == SORT_KEY:
                         return -getattr(self, key)
                     else:
                         return super().__getattribute__(item)
         else:
             class ComparisonMixin(ComparisonMixinBase):
                 def __getattribute__(self, item):
-                    if item == '__sort_key__':
+                    if item == SORT_KEY:
                         return getattr(self, key)
                     else:
                         return super().__getattribute__(item)

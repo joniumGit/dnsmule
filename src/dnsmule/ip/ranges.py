@@ -1,9 +1,10 @@
-import logging
 from dataclasses import dataclass
 from ipaddress import IPv4Network, IPv6Network
 from typing import Set, Union, List
 
 from httpx import AsyncClient
+
+from ..config import get_logger
 
 
 @dataclass
@@ -19,7 +20,7 @@ async def fetch_google_ip_ranges_goog() -> Set[IPv4Network]:
     async with AsyncClient() as client:
         data = (await client.get(host)).json()
 
-    logging.getLogger('dnsmule').debug(
+    get_logger().debug(
         '---GOOGLE GOOG DATA---\nModified:\n%s\nCount:\n%s',
         data['creationTime'],
         len(data['prefixes']),
@@ -39,7 +40,7 @@ async def fetch_google_ip_ranges_cloud() -> List[IPvXRange]:
     async with AsyncClient() as client:
         data = (await client.get(host)).json()
 
-    logging.getLogger('dnsmule').debug(
+    get_logger().debug(
         '---GOOGLE CLOUD DATA---\nModified:\n%s\nCount:\n%s',
         data['creationTime'],
         len(data['prefixes']),
@@ -72,7 +73,7 @@ async def fetch_amazon_ip_ranges() -> List[IPvXRange]:
     async with AsyncClient() as client:
         data = (await client.get(host)).json()
 
-    logging.getLogger('dnsmule').debug(
+    get_logger().debug(
         '---AMAZON DATA---\nModified:\n%s\nCount:\n%s',
         data['createDate'],
         len(data['prefixes']),
@@ -120,7 +121,7 @@ async def fetch_microsoft_ip_ranges() -> List[IPvXRange]:
         assert json_url != ''
         data = (await client.get(json_url)).json()
 
-    logging.getLogger('dnsmule').debug(
+    get_logger().debug(
         '---MICROSOFT DATA---\nChange N:\n%s\nCount:\n%s',
         data['changeNumber'],
         len(data['values']),

@@ -1,4 +1,3 @@
-import logging
 from typing import List, Union, Dict
 
 from dns.asyncquery import udp_with_fallback
@@ -7,18 +6,17 @@ from dns.name import Name
 from dns.rdata import Rdata
 from dns.rdatatype import RdataType, is_metatype
 
-from ..config import defaults
+from ..config import defaults, get_logger
 
 
 async def query(host: Union[str, Name], *types: RdataType, resolver: str = defaults.DEFAULT_RESOLVER) -> Message:
-    _logger = logging.getLogger('dnsmule')
     for dns_type in types:
         if not is_metatype(dns_type):
-            _logger.debug('[%s, %s] Starting query', host, dns_type)
+            get_logger().debug('[%s, %s] Starting query', host, dns_type)
             _query = make_query(host, dns_type)
             response, used_tcp = await udp_with_fallback(_query, resolver)
             if used_tcp:
-                _logger.debug('[%s, %s] Used TCP fallback query', host, dns_type)
+                get_logger().debug('[%s, %s] Used TCP fallback query', host, dns_type)
             return response
 
 

@@ -1,8 +1,6 @@
-from typing import cast
-
 import pytest
 
-from dnsmule.rules.rules import Rule, Type, Result, Record, Rules
+from dnsmule.rules import Rules, Record, Result, Rule, Type, load_rules_from_config
 
 
 @pytest.fixture
@@ -44,7 +42,7 @@ def test_rules_rule_ordering_with_changes():
 
 
 def test_rules_rule_name(rules):
-    @rules.CNAME
+    @rules.add.CNAME
     def my_cool_rule():
         pass
 
@@ -52,12 +50,12 @@ def test_rules_rule_name(rules):
 
 
 def test_rules_rule_unknown_type(rules):
-    unknown = cast(Type, 13213213123)
+    unknown = 65533
 
-    def unknown_type():
-        pass
+    def unknown_type(r: Record):
+        return r.result()
 
-    rules.add_rule(unknown, 0)(unknown_type)
+    rules.add_rule(unknown, Rule(unknown_type))
 
     assert 'f=unknown_type' in str(rules[unknown].pop())
 
@@ -66,13 +64,13 @@ def test_rules_factory_operation(rules):
     @rules.register('test')
     def my_cool_rule(name: str):
         assert name == 'hello_world'
+        return Rule(dummy)
 
-    rules.load_config([
-        {
+    load_rules_from_config({
+        'hello_world': {
             'type': 'test',
             'record': 'TXT',
-            'name': 'hello_world',
-        }  # TODO: FIx this name thingy to be better from yaml and add it to rule
-    ])
+        }
+    }, rules=rules)
 
-    assert rules[Type.TXT].pop().f is None
+    assert rules[Type.TXT].pop().f is dummy

@@ -1,6 +1,7 @@
 import pytest
 
-from dnsmule.rules import Rules, Record, Result, Rule, Type, load_rules_from_config, DynamicRule
+from dnsmule.rules import Rules, Record, Result, Rule, Type, DynamicRule
+from dnsmule.rules.utils import load_rules_from_config
 
 
 @pytest.fixture
@@ -62,16 +63,17 @@ def test_rules_rule_unknown_type(rules):
 
 def test_rules_factory_operation(rules):
     @rules.register('test')
-    def my_cool_rule(name: str):
+    def my_cool_rule(name: str, **__):
         assert name == 'hello_world'
         return Rule(dummy)
 
-    load_rules_from_config({
-        'hello_world': {
+    load_rules_from_config([
+        {
+            'hello_world': None,
             'type': 'test',
             'record': 'TXT',
         }
-    }, rules=rules)
+    ], rules=rules)
 
     assert rules[Type.TXT].pop().f is dummy
 
@@ -80,7 +82,7 @@ def test_rules_dynamic_factory_operation(rules):
     from textwrap import dedent
 
     @rules.register('test')
-    def my_cool_rule(name: str):
+    def my_cool_rule(name: str, **__):
         assert name == 'hello_world'
         return DynamicRule(code=dedent(
             # language=Python
@@ -96,12 +98,13 @@ def test_rules_dynamic_factory_operation(rules):
             """
         ))
 
-    load_rules_from_config({
-        'hello_world': {
+    load_rules_from_config([
+        {
+            'hello_world': None,
             'type': 'test',
             'record': 'TXT',
         }
-    }, rules=rules)
+    ], rules=rules)
 
     assert rules.process_record(Record(**dict(domain=None, type=Type.TXT, data=None))).tags[0] == 'True'
 

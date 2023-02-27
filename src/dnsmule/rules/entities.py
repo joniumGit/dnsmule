@@ -86,6 +86,8 @@ class Rule(metaclass=Comparable, key='priority', reverse=True):
         }
         self.__dict__.update(_keys)
         self._properties = [*_keys.keys()]
+        if 'name' not in self._properties:
+            self._properties.insert(0, 'name')
         if f is not None and not callable(f):
             raise ValueError('Rule function not callable')
         elif f is None and self.__call__ is not Rule.__call__:
@@ -94,8 +96,8 @@ class Rule(metaclass=Comparable, key='priority', reverse=True):
             if f is None:
                 raise ValueError('Rule function was None')
             self.f = f
-            if not self.name and hasattr(self.f, '__name__'):
-                self.name = self.f.__name__
+        if not self.name and hasattr(self.f, '__name__'):
+            self.name = self.f.__name__
 
     def __call__(self, record: Record):
         if self.f is self.__call__:
@@ -107,10 +109,10 @@ class Rule(metaclass=Comparable, key='priority', reverse=True):
 
     def __str__(self):
         args = ','.join(
-            f'{k}={repr(self.v)}'
+            f'{k}={repr(getattr(self, k))}'
             for k in self._properties
         )
-        return f'{type(self.name)}({args})'
+        return f'{type(self).__name__}({args})'
 
 
 RuleFactory = Callable[[str, Dict], Rule]

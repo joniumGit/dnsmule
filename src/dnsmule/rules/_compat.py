@@ -35,6 +35,19 @@ class CopyCat:
         return self._wrapped.__repr__()
 
 
+for method in ['__lt__', '__gt__', '__ge__', '__le__', ]:
+    def _method(self, other):
+        if isinstance(other, CopyCat):
+            return getattr(self._wrapped, method)(other._wrapped)
+        else:
+            return getattr(self._wrapped, method)(other)
+
+
+    _method.__name__ = method
+
+    setattr(CopyCat, method, _method)
+
+
 class Domain(CopyCat):
     """Wrapper for dnspython Name
     """
@@ -94,15 +107,6 @@ class Type(CopyCat):
 # Set enum members to the wrapper class as well
 for k, v in RdataType.__members__.items():
     setattr(Type, k, Type(_wrapped=v))
-
-for method in ['__lt__', '__gt__', '__ge__', '__le__', ]:
-    def _method(self, other):
-        return getattr(self._wrapped, method)(other)
-
-
-    _method.__name__ = method
-
-    setattr(Type, method, _method)
 
 __all__ = [
     'Data',

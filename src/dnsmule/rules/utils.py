@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Dict, List
+from typing import Dict, List, Any
 
 from .entities import Type
 from .rules import Rules
@@ -18,7 +18,7 @@ def load_and_append_rule(rules: Rules, rule_definition: Dict):
     rules.add_rule(rule_record_type, rule)
 
 
-def load_rules_from_config(config: List[Dict[str, Dict]], rules: Rules = None) -> Rules:
+def load_rules_from_config(config: List[Dict[str, Any]], rules: Rules = None) -> Rules:
     """Loads rules from the rules element in rules.yml
 
     Provider rules in case of non-default handlers.

@@ -15,13 +15,16 @@ def process_message(rules: Rules, domain: Name, message: Message) -> Dict[RdataT
     """
     rrset: RRset
     rdata: Rdata
-    out: Dict[RdataType, Result] = {t: Result(Type(type=t)) for t in RdataType}
+    dom = Domain(_wrapped=domain)
+    out: Dict[RdataType, Result] = {}
     for rrset in message.answer:
         for rdata in rrset:
+            if rdata.rdtype not in out:
+                out[rdata.rdtype] = Result(Type(_wrapped=rdata.rdtype), dom)
             out[rdata.rdtype] += rules.process_record(Record(
                 type=rdata.rdtype,
-                domain=Domain(name=domain),
-                data=Data(data=rdata),
+                domain=dom,
+                data=Data(_wrapped=rdata),
             ))
     return out
 

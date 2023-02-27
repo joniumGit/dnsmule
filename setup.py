@@ -28,6 +28,7 @@ setup(
     install_requires=[
         'dnspython',
         'httpx',
+        'pyyaml',
         # 'redis',
     ],
     project_urls={

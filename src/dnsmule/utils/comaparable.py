@@ -31,18 +31,14 @@ class Comparable(type):
 
         if reverse:
             class ComparisonMixin(ComparisonMixinBase):
-                def __getattribute__(self, item):
+                def __getattr__(self, item):
                     if item == SORT_KEY:
                         return -getattr(self, key)
-                    else:
-                        return super().__getattribute__(item)
         else:
             class ComparisonMixin(ComparisonMixinBase):
-                def __getattribute__(self, item):
+                def __getattr__(self, item):
                     if item == SORT_KEY:
                         return getattr(self, key)
-                    else:
-                        return super().__getattribute__(item)
 
         instance = super().__new__(
             mcs,

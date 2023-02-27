@@ -31,6 +31,18 @@ class BoundedWorkQueue(Generic[T]):
         self.tasks = deque(pending)
         self.results.extend(t.result() for t in done)
 
+    async def iterate(self):
+        while self.tasks or self.waiting:
+            self._populate()
+            await self._wait_for_next()
+            _results = self.results
+            self.results = deque()
+            yield [*_results]
+        if self.results:
+            _results = self.results
+            self.results = deque()
+            yield [*_results]
+
     async def complete(self) -> List[T]:
         while self.tasks or self.waiting:
             self._populate()
@@ -40,10 +52,11 @@ class BoundedWorkQueue(Generic[T]):
     async def cancel(self):
         import contextlib
         for coro in self.waiting:
-            coro.close()
-        remaining = aio.gather(*self.tasks, return_exceptions=True)
+            with contextlib.suppress(aio.CancelledError, RuntimeError):
+                coro.close()
+        remaining = aio.gather(*self.tasks, return_exceptions=False)
         remaining.cancel()
-        with contextlib.suppress(aio.CancelledError):
+        with contextlib.suppress(aio.CancelledError, RuntimeError):
             await remaining
 
 

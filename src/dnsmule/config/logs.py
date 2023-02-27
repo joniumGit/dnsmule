@@ -2,7 +2,7 @@ import logging
 
 
 def get_logger():
-    logging.getLogger('dnsmule')
+    return logging.getLogger('dnsmule')
 
 
 __all__ = [

@@ -1,7 +1,7 @@
-from typing import Dict, List
-from typing import Union
+from typing import Dict
 
-from .entities import Rule, DynamicRule, Record, RuleFactory
+from .entities import Rule, RuleFactory
+from .ruletypes import DynamicRule, RegexRule
 
 
 class RuleFactoryMixIn:
@@ -27,49 +27,12 @@ class RuleFactoryMixIn:
         return decorator
 
 
-def dns_create_regex_rule(
-        pattern: str,
-        priority: int = 0,
-        identification: str = None,
-        flags: List[str] = None,
-        attribute: str = 'to_text',
-        group: Union[int, str] = None,
-        name: str = None,
-        **__,
-) -> Rule:
-    import re
-    import functools
-    import operator
-
-    all_flags = {k.lower(): v for k, v in re.RegexFlag.__members__.items()}
-    flags = functools.reduce(
-        operator.or_,
-        (all_flags[flag.lower()] for flag in flags if flag in all_flags),
-    )
-    p = re.compile(pattern, flags=flags)
-
-    def dns_regex(record: Record):
-        m = p.search(str(getattr(record.data, attribute)))
-        if m:
-            _id = identification if group is None else m.group(group)
-            return record.identify(f'DNS::REGEX::{_id.upper()}')
-
-    if name:
-        dns_regex.__name__ = name
-
-    return Rule(dns_regex, priority=priority)
+def dns_create_regex_rule(**kwargs) -> RegexRule:
+    return RegexRule(**kwargs)
 
 
-def dns_create_dynamic_rule(
-        code: str,
-        priority: int = 0,
-        name: str = None,
-        **__,
-) -> DynamicRule:
-    rule = DynamicRule(code, priority=priority)
-    if name:
-        rule.name = name
-    return rule
+def dns_create_dynamic_rule(**kwargs) -> Rule:
+    return DynamicRule(**kwargs)
 
 
 def add_default_factories(factory_storage: RuleFactoryMixIn) -> None:

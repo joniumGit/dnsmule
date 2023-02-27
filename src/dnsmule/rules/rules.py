@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict, Union, List
+from typing import Dict, Union, List, Set
 
 from .entities import Rule, Record, Result, RuleCreator, Type
 from .factories import RuleFactoryMixIn
@@ -17,20 +17,20 @@ class Rules(RuleFactoryMixIn):
         self._rules = defaultdict(list)
 
     def process_record(self, record: Record) -> Result:
-        result = Result(record.type)
         for r in self._rules.get(record.type, []):
             try:
-                other_result = r(record)
-                if other_result:
-                    result += other_result
+                r(record)
             except Exception as e:
                 self.log.error(f'Rule {r.name} raised an exception', exc_info=e)
-        return result
+        return record.result()
 
     def add_rule(self, rtype: Union[Type, int, str], rule: Rule) -> None:
         rtype = Type.from_any(rtype)
         self._rules[rtype].append(rule)
         self._rules[rtype].sort()
+
+    def get_rtypes(self) -> List[Type]:
+        return [*self._rules.keys()]
 
     @property
     def add(self) -> RuleCreator:

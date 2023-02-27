@@ -1,9 +1,9 @@
 from dns.rdatatype import RdataType
 
-from src.dnsmule.ip import ranges
-from src.dnsmule.queries.queries import query
-from src.dnsmule.utils import resolve_domain_from_certificates, subset_domains
-from src.dnsmule.queries import a_to_ptr
+from dnsmule.ip import ranges
+from dnsmule.queries.queries import query
+from dnsmule.utils import resolve_domain_from_certificates, subset_domains
+from dnsmule.queries import a_to_ptr
 
 
 async def main():

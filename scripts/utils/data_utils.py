@@ -13,19 +13,18 @@ def load_data(file: str, limit: int = -1):
 
     If the given ``limit < 0`` then all data is returned.
     """
-    if file.endswith('.csv'):
-        import csv
-        with open(file, 'r') as f:
-            data = [row[1] for row in csv.reader(f)]
-    else:
-        with open(file, 'r') as f:
-            data = f.read().splitlines(keepends=False)
-    if limit < 0:
-        yield from iter(data)
-    else:
-        data = iter(data)
-        for _ in range(limit):
-            yield next(data)
+    with open(file, 'r') as f:
+        if file.endswith('.csv'):
+            import csv
+            data = map(lambda r: r[1], csv.reader(f))
+        else:
+            data = map(lambda s: s.strip(), f)
+        if limit < 0:
+            yield from iter(data)
+        else:
+            data = iter(data)
+            for _ in range(limit):
+                yield next(data)
 
 
 __all__ = [

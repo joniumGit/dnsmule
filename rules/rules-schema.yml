@@ -1,14 +1,12 @@
-$id: /dnsmule/rules
 type: object
 title: DNSMule rule definition
 description: |+2
   This file is used to define rules and configuration for DNSMule
 
   The general rule resolution flow goes as follows:
-  - Create factory type rules without parameters
-  - Create other rules from definition file
+  - Create rules from definition file
+  - Invoke dynamic rule initialization
   - Gather data
-  - Create factory type rules with Record parameter
   - Run data through the rules
 required:
   - version
@@ -70,7 +68,8 @@ definitions:
             title: Matches DNS records with regex
           flags:
             type: array
-            default: [ ]
+            default:
+              - UNICODE
             items:
               type: string
               title: Python RegExp flags
@@ -148,49 +147,69 @@ definitions:
             const: dns.dynamic
           code:
             type: string
-            title: Creates rules by invoking python code
+            title: Dynamic actions by invoking python code
             description: |+2
-              It is possible to define dynamic rules with two methods:
+              Dynamic rules are defined as code snippets with one or two methods
             
-              As a plain factory for dynamically creating rules:
+              1. An init method that is invoked once after creation
             
-                def initialize() -> None:
+                def init() -> None:
                     add_rule(Type.TXT, ...)
             
-              As a normal rule which is evaluated dynamically:
+              2. A process function that is invoked once for each record
             
-                def process(record) -> Optional[Result]:
+                def process(record: Record) -> Result:
                     add_rule(...)
                     return record.result()
             
-              The only globals passed to these functions are objects available from:
-              - __builtins__
-              - from typing import List, Callable, Optional
-              - from .data import Type, Record, Result
-              - from .types import RULE_TYPE as Rule
-              - add_rule, see below
+              Both of these functions have access to the following rule creation method:
             
-              When the code is evaluated the result is inspected for:
-              - initialize function without parameters
+                def add_rule(
+                    record_type: Any,   # DNS record type this rule will handle
+                    rule_type: str,     # Rule type i.e. rule factory name
+                    name: str,          # Name for the rule
+                    priority: int = 0,  # Priority for the rule
+                    **options           # Options passed to the factory
+                ) -> None:
+                  pass
+            
+              The only globals passed to these methods are:
+              - __builtins__
+              - from dnsmule.rules.entities import Type, Record, Result
+              - add_rule
+              - Any additional globals created by the code itself
+            
+              When the code is exec'd the result is inspected for:
+              - init function without parameters
               - process function with a single parameter
             
-              It is possible to set globals in the initialize function as the context persists between calls.
-            
               Some notes:
-              - The initialize function is invoked exactly once.
+              - The init function is invoked exactly once.
               - The process function is invoked exactly once for every single Record.
-              - The rules returned from the initialize will be invoked for every suitable record.
-              - The rules returned from the process will be invoked for every suitable record after adding it.
-              - It is not guaranteed that recursion works if a new dynamic rule is added
+              - Any rules created from the init method will be invoked for every suitable record.
+              - Any rules created from the process method will be invoked for suitable records found after creation.
+              - Creating DynamicRules from init or process is considered undefined behaviour and care should be taken
+                - The user should call init manually and include fail-safes for only calling it once
+                - The add_rule callback might not be available so you need to pass it manually to the rule
             x-intellij-language-injection:
               language: Python
               prefix: |+0
-                from typing import List, Callable, Optional
-
-                from dnsmule.rules.data import Type, Record, Result
-                from dnsmule.rules.types import RULE_TYPE as Rule
+                from dnsmule.rules.entities import Type, Record, Result
                 
-                def add_rule(record: Type, rule_type: str, priority: int = 0, **options):
+                def add_rule(
+                        record_type: Any,
+                        rule_type: str,
+                        name: str,
+                        priority: int = 0,
+                        **options,
+                ) -> None:
+                    """
+                    :param record_type: Valid DNS record type as text, int, or type
+                    :param rule_type:   Valid rule type factory e.g. dns.regex
+                    :param name:        Name of the created rule
+                    :param priority:    Priority for the created rule, default 0
+                    :param options:     Any additional options for the rule factory
+                    """
                     pass
 
               suffix: ''

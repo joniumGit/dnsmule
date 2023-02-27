@@ -1,19 +1,20 @@
 from dataclasses import dataclass
-from typing import Dict, List, Callable, Optional, Any
+from typing import Dict, List, Callable
 
 from ._compat import Type, Data, Domain
 from ..utils import Comparable
 
 
+@dataclass(slots=True, init=False, frozen=False)
 class Result:
     type: Type
     tags: List
     data: Dict
+    domain: Domain
 
-    __slots__ = ['type', 'tags', 'data']
-
-    def __init__(self, __type: Type):
-        self.type = __type
+    def __init__(self, _type: Type, _domain: Domain):
+        self.type = _type
+        self.domain = _domain
         self.tags = []
         self.data = {}
 
@@ -24,30 +25,45 @@ class Result:
         self.data[key] = value
 
     def __add__(self, other: 'Result') -> 'Result':
-        r = Result(self.type)
-        r.tags.extend(self.tags)
-        r.tags.extend(other.tags)
-        r.data.update(self.data)
-        r.data.update(other.data)
-        return r
+        if self is not other:
+            if self.type != other.type:
+                raise ValueError('Can not add different types')
+            self.tags.extend(other.tags)
+            self.data.update(other.data)
+        return self
 
     def __bool__(self):
-        return self.tags or self.data
+        return bool(self.tags or self.data)
+
+    def __hash__(self):
+        return hash((self.type, self.domain))
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and other.domain == self.domain and other.type == self.type
 
 
-@dataclass
+@dataclass(slots=True, frozen=False)
 class Record:
     domain: Domain
     type: Type
     data: Data
+    _result: Result = None
 
     def result(self):
-        return Result(self.type)
+        if self._result is None:
+            self._result = Result(self.type, self.domain)
+        return self._result
 
     def identify(self, identification: str):
         r = self.result()
         r.tags.append(identification)
         return r
+
+    def __hash__(self):
+        return hash((self.type, self.domain))
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and other.domain == self.domain and other.type == self.type
 
 
 RuleFunction = Callable[[Record], Result]
@@ -57,59 +73,47 @@ class Rule(metaclass=Comparable, key='priority', reverse=True):
     """Wrapper class for rules to support priority based comparison
     """
     f: RuleFunction
-    name: str
-    priority: int
 
-    def __init__(self, f: RuleFunction, priority: int = 0):
+    name: str = None
+    priority: int = 0
+
+    def __init__(self, f: RuleFunction = None, **kwargs):
         super().__init__()
-        self.f = f
-        if hasattr(f, '__name__'):
-            self.name = f.__name__
-        self.priority = priority
+        _keys = {
+            k: v
+            for k, v in kwargs.items()
+            if not (k.startswith('__') and k.endswith('__'))
+        }
+        self.__dict__.update(_keys)
+        self._properties = [*_keys.keys()]
+        if f is not None and not callable(f):
+            raise ValueError('Rule function not callable')
+        elif f is None and self.__call__ is not Rule.__call__:
+            self.f = self.__call__
+        else:
+            if f is None:
+                raise ValueError('Rule function was None')
+            self.f = f
+            if not self.name and hasattr(self.f, '__name__'):
+                self.name = self.f.__name__
 
     def __call__(self, record: Record):
+        if self.f is self.__call__:
+            raise RecursionError('Illegal state, infinite recursion detected')
         return self.f(record)
 
     def __repr__(self):
         return self.__str__()
 
     def __str__(self):
-        return f'Rule(f={self.name}, priority={self.priority})'
+        args = ','.join(
+            f'{k}={repr(self.v)}'
+            for k in self._properties
+        )
+        return f'{type(self.name)}({args})'
 
 
 RuleFactory = Callable[[str, Dict], Rule]
-
-
-class DynamicRule(Rule):
-
-    def __init__(self, code: str, **kwargs):
-        self._globals = {
-            '__builtins__': __builtins__,
-            'Rule': RuleFunction,
-            'Type': Type,
-            'Record': Record,
-            'Result': Result,
-            'List': List,
-            'Optional': Optional,
-        }
-        self._code = compile(code, 'dnsmule-dynamic-rule-init.py', 'exec')
-        super().__init__(f=self.eval, **kwargs)
-
-    def init(self, create_callback: RuleFactory):
-        def add_rule(record_type: Any, rule_type: str, name: str, priority: int = 0, **options):
-            create_callback(name, {
-                'record': str(record_type),
-                'type': rule_type,
-                'priority': priority,
-                **options,
-            })
-
-        self._globals['add_rule'] = add_rule
-        exec(self._code, self._globals)
-        eval('create()', self._globals)
-
-    def eval(self, record: Record) -> Result:
-        return eval('prepare(record)', self._globals, {'record': record}) or record.result()
 
 
 class RuleCreator:
@@ -147,7 +151,6 @@ __all__ = [
     'Record',
     'Domain',
     'Rule',
-    'DynamicRule',
     'RuleCreator',
     'Type',
     'Data',

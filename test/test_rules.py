@@ -1,6 +1,6 @@
 import pytest
 
-from dnsmule.rules import Rules, Record, Result, Rule, Type, load_rules_from_config
+from dnsmule.rules import Rules, Record, Result, Rule, Type, load_rules_from_config, DynamicRule
 
 
 @pytest.fixture
@@ -13,9 +13,9 @@ def dummy(_: Record) -> Result:
 
 
 def test_rules_rule_ordering():
-    r0 = Rule(dummy, 0)
-    r1 = Rule(dummy, 1)
-    r2 = Rule(dummy, 2)
+    r0 = Rule(dummy, priority=0)
+    r1 = Rule(dummy, priority=1)
+    r2 = Rule(dummy, priority=2)
 
     data = [r2, r0, r1]
     data.sort()
@@ -25,8 +25,8 @@ def test_rules_rule_ordering():
 
 
 def test_rules_rule_ordering_with_changes():
-    r0 = Rule(dummy, 0)
-    r1 = Rule(dummy, 1)
+    r0 = Rule(dummy, priority=0)
+    r1 = Rule(dummy, priority=1)
 
     data = [r0, r1]
     data.sort()
@@ -46,7 +46,7 @@ def test_rules_rule_name(rules):
     def my_cool_rule():
         pass
 
-    assert 'f=my_cool_rule' in str(rules[Type.CNAME].pop())
+    assert "name='my_cool_rule'" in str(rules[Type.CNAME].pop())
 
 
 def test_rules_rule_unknown_type(rules):
@@ -57,7 +57,7 @@ def test_rules_rule_unknown_type(rules):
 
     rules.add_rule(unknown, Rule(unknown_type))
 
-    assert 'f=unknown_type' in str(rules[unknown].pop())
+    assert "name='unknown_type'" in str(rules[unknown].pop())
 
 
 def test_rules_factory_operation(rules):
@@ -74,3 +74,50 @@ def test_rules_factory_operation(rules):
     }, rules=rules)
 
     assert rules[Type.TXT].pop().f is dummy
+
+
+def test_rules_dynamic_factory_operation(rules):
+    from textwrap import dedent
+
+    @rules.register('test')
+    def my_cool_rule(name: str):
+        assert name == 'hello_world'
+        return DynamicRule(code=dedent(
+            # language=Python
+            """
+            GLOBAL_DATA = {}
+            
+            def init():
+                GLOBAL_DATA['init'] = True
+            
+            def process(record):
+                assert GLOBAL_DATA['init']
+                return record.identify(str(GLOBAL_DATA['init']))
+            """
+        ))
+
+    load_rules_from_config({
+        'hello_world': {
+            'type': 'test',
+            'record': 'TXT',
+        }
+    }, rules=rules)
+
+    assert rules.process_record(Record(**dict(domain=None, type=Type.TXT, data=None))).tags[0] == 'True'
+
+
+def test_create_regex_rule(rules):
+    rule = rules.create_rule({
+        'type': 'dns.regex',
+        'name': 'test',
+        'pattern': '^(test.)$',
+        'attribute': '__str__',
+        'group': 1,
+        'flags': [
+            'UNICODE',
+            'DOTALL',
+        ]
+    })
+
+    assert rule.f
+    assert rule(Record(**dict(domain=None, type=Type.TXT, data='test\n'))).tags[0] == 'DNS::REGEX::TEST\n'

@@ -10,3 +10,4 @@ htmlcov
 __service_cache__
 *.txt
 *.csv
+*.json

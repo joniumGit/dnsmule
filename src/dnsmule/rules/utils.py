@@ -1,5 +1,6 @@
 from functools import partial
-from typing import Dict, List, Any
+from pathlib import Path
+from typing import Dict, List, Any, Union
 
 from .rules import Rules
 from .ruletypes import DynamicRule
@@ -28,11 +29,12 @@ def load_rules(config: List[Dict[str, Any]], rules: Rules = None) -> Rules:
         name = next(iter(rule_definition.keys()))
         if 'name' not in rule_definition:
             rule_definition['name'] = name
+            rule_definition.pop(name)
         load_and_append_rule(rules, rule_definition)
     return rules
 
 
-def load_config(file: str, rules: Rules = None) -> Rules:
+def load_config(file: Union[str, Path], rules: Rules = None) -> Rules:
     """Loads rules from yaml config
     """
     import yaml

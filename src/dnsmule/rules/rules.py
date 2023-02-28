@@ -42,6 +42,9 @@ class Rules(RuleFactoryMixIn):
     def __getitem__(self, item: Union[RRType, int, str]) -> List[Rule]:
         return self._rules[RRType.from_any(item)]
 
+    def __iter__(self):
+        yield from self._rules.items()
+
 
 __all__ = [
     'Rules',

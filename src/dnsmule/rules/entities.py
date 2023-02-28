@@ -51,6 +51,9 @@ class Rule(metaclass=Comparable, key='priority', reverse=True):
         )
         return f'{type(self).__name__}({args})'
 
+    def __eq__(self, other):
+        return isinstance(other, Rule) and self.name == other.name
+
 
 RuleFactory = Callable[[str, Dict], Rule]
 

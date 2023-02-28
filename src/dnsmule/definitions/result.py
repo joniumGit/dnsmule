@@ -41,7 +41,16 @@ class Result:
         return hash(self.domain)
 
     def __eq__(self, other):
-        return isinstance(other, type(self)) and other.domain == self.domain
+        return isinstance(other, type(self)) and other.domain == self.domain or other == self.domain
+
+    def to_dict(self):
+        from json import dumps, loads
+        return {
+            'domain': self.domain.name,
+            'type': [RRType.to_text(t) for t in self.type],
+            'tags': [*self.tags],
+            'data': loads(dumps(self.data, default=str))
+        }
 
 
 __all__ = [

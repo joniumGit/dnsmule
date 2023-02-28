@@ -1,15 +1,16 @@
 from collections import defaultdict
-from typing import Dict, Union, List, Set
+from typing import Dict, Union, List
 
-from .entities import Rule, Record, Result, RuleCreator, Type
+from .entities import Rule, RuleCreator
 from .factories import RuleFactoryMixIn
 from ..config import get_logger
+from ..definitions import Record, Result, RRType
 
 
 class Rules(RuleFactoryMixIn):
     """Class for storing rules
     """
-    _rules: Dict[Type, List[Rule]]
+    _rules: Dict[RRType, List[Rule]]
 
     def __init__(self):
         super().__init__()
@@ -24,22 +25,23 @@ class Rules(RuleFactoryMixIn):
                 self.log.error(f'Rule {r.name} raised an exception', exc_info=e)
         return record.result()
 
-    def add_rule(self, rtype: Union[Type, int, str], rule: Rule) -> None:
-        rtype = Type.from_any(rtype)
+    def add_rule(self, rtype: Union[RRType, int, str], rule: Rule) -> None:
+        rtype = RRType.from_any(rtype)
         self._rules[rtype].append(rule)
         self._rules[rtype].sort()
 
-    def get_rtypes(self) -> List[Type]:
+    def get_types(self) -> List[RRType]:
         return [*self._rules.keys()]
 
     @property
     def add(self) -> RuleCreator:
         return RuleCreator(callback=self.add_rule)
 
-    def __getitem__(self, item: Union[Type, int, str]) -> List[Rule]:
-        return self._rules[Type.from_any(item)]
+    def __getitem__(self, item: Union[RRType, int, str]) -> List[Rule]:
+        return self._rules[RRType.from_any(item)]
 
 
 __all__ = [
     'Rules',
+    'Rule',
 ]

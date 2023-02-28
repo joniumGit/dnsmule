@@ -1,6 +1,26 @@
-from typing import List, Dict, Collection, Iterable
+from typing import List, Dict, Collection, Iterable, Any
 
-DOMAIN_GROUP_TYPE = Dict[str, Collection[str]]
+DomainGroup = Dict[str, Collection[str]]
+
+
+def lmerge(a: Dict[str, Any], b: Dict[str, Any]):
+    """Left merge two dicts
+    """
+    for k in b:
+        if k not in a or not isinstance(a[k], type(b[k])):
+            a[k] = b[k]
+        elif isinstance(a[k], dict):
+            lmerge(a[k], b[k])
+        elif isinstance(a[k], list):
+            a[k].extend(b[k])
+        elif isinstance(a[k], set):
+            a[k].update(b[k])
+        elif isinstance(a[k], tuple):
+            a[k] = (*a[k], *b[k])
+        elif isinstance(a[k], frozenset):
+            a[k] = frozenset({*a[k], *b[k]})
+        else:
+            a[k] += b[k]
 
 
 def resolve_domain_from_certificates(ip: str, port: int = 443) -> List[str]:
@@ -11,8 +31,8 @@ def resolve_domain_from_certificates(ip: str, port: int = 443) -> List[str]:
     >>> resolve_domain_from_certificates('127.0.0.1')
     []
     """
-    from .certificates import collect_certificate  # Import here to not crash on doctest
-    cert = collect_certificate(ip, port=port)
+    from .ip import certificates  # Import here to not crash on doctest
+    cert = certificates.collect_certificate(ip, port=port)
     if cert is not None:
         return [cert.common, *cert.alts]
     else:
@@ -29,7 +49,7 @@ def subset_domains(*domains: str) -> List[str]:
     return [*{*(d.lstrip('*.') for d in domains), *('.'.join(d.split('.')[-2:]) for d in domains)}]
 
 
-def group_domains(suffix: str, data: Iterable[str]) -> DOMAIN_GROUP_TYPE:
+def group_domains(suffix: str, data: Iterable[str]) -> DomainGroup:
     """Groups all subdomains under the same parent domain filtered by the given suffix
 
     >>> domain_data = ['a.b.c', 'd.b.c', 'b.c', 'd.d']
@@ -51,7 +71,7 @@ def group_domains(suffix: str, data: Iterable[str]) -> DOMAIN_GROUP_TYPE:
     return domains
 
 
-def generate_most_common_subdomains(grouped_domains: DOMAIN_GROUP_TYPE, count: int):
+def generate_most_common_subdomains(grouped_domains: DomainGroup, count: int):
     """Generates first left subdomains more common than the given count
 
     >>> [*generate_most_common_subdomains({'a.b': ['a.a.b', 'c.a.b', 'a.a.b'], 'b.b.': {'a.b.b'}}, 1)]
@@ -88,6 +108,6 @@ __all__ = [
     'resolve_domain_from_certificates',
     'group_domains',
     'generate_most_common_subdomains',
-    # Types
-    'DOMAIN_GROUP_TYPE',
+    'lmerge',
+    'DomainGroup',
 ]

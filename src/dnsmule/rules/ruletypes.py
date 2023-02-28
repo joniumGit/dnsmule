@@ -5,7 +5,8 @@ from typing import Any
 from typing import List
 from typing import Union
 
-from .entities import Rule, Type, Record, Result, RuleFactory
+from .entities import Rule, RuleFactory
+from ..definitions import Result, Record, RRType
 
 
 class RegexRule(Rule):
@@ -69,7 +70,7 @@ class DynamicRule(Rule):
         super().__init__(**kwargs)
         self._globals = {
             '__builtins__': __builtins__,
-            'Type': Type,
+            'RRTypes': RRType,
             'Record': Record,
             'Result': Result,
         }

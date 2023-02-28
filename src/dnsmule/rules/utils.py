@@ -1,9 +1,9 @@
 from functools import partial
 from typing import Dict, List, Any
 
-from .entities import Type
 from .rules import Rules
 from .ruletypes import DynamicRule
+from ..definitions import RRType
 
 
 def load_and_append_rule(rules: Rules, rule_definition: Dict):
@@ -11,14 +11,14 @@ def load_and_append_rule(rules: Rules, rule_definition: Dict):
 
     Initializes any dynamic rules created and passes the add_rule callback to them
     """
-    rule_record_type = Type.from_any(rule_definition.pop('record'))
+    rule_record_type = RRType.from_any(rule_definition.pop('record'))
     rule = rules.create_rule(rule_definition)
     if isinstance(rule, DynamicRule):
         rule.init(partial(load_and_append_rule, factory_provider=rules))
     rules.add_rule(rule_record_type, rule)
 
 
-def load_rules_from_config(config: List[Dict[str, Any]], rules: Rules = None) -> Rules:
+def load_rules(config: List[Dict[str, Any]], rules: Rules = None) -> Rules:
     """Loads rules from the rules element in rules.yml
 
     Provider rules in case of non-default handlers.
@@ -38,10 +38,11 @@ def load_config(file: str, rules: Rules = None) -> Rules:
     import yaml
     with open(file, 'r') as f:
         document = yaml.safe_load(f)
-        return load_rules_from_config(document['rules'], rules=rules)
+        return load_rules(document['rules'], rules=rules)
 
 
 __all__ = [
     'DynamicRule',
     'load_config',
+    'load_rules',
 ]

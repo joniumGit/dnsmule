@@ -175,7 +175,7 @@ definitions:
             
               The only globals passed to these methods are:
               - __builtins__
-              - from dnsmule.rules.entities import Type, Record, Result
+              - from dnsmule.definitions import RRType, Record, Result
               - add_rule
               - Any additional globals created by the code itself
             
@@ -194,7 +194,7 @@ definitions:
             x-intellij-language-injection:
               language: Python
               prefix: |+0
-                from dnsmule.rules.entities import Type, Record, Result
+                from dnsmule.definitions import RRType, Record, Result
                 
                 def add_rule(
                         record_type: Any,

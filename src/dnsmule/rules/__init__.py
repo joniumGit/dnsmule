@@ -1,4 +1,2 @@
-from ._process import process_message
-from .entities import Record, Result, Rule, Type
-from .rules import Rules
+from .rules import Rules, Rule
 from .utils import DynamicRule, load_config

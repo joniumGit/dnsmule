@@ -1,9 +1,8 @@
 import json
 import logging
 
-from dns.rdatatype import RdataType
-
 from dnsmule.config import defaults, get_logger
+from dnsmule.definitions import RRType
 from dnsmule.rules import load_config
 from dnsmule.utils import group_domains, generate_most_common_subdomains
 from utils.data_utils import load_data
@@ -47,11 +46,11 @@ def main(file: str, rule_file: str, limit: int, count: int, skip_dump: bool, all
     print()
 
     print('Most common services from TXT records')
-    verifications = sorted_tags(results, RdataType.TXT)
+    verifications = sorted_tags(results, RRType.TXT)
     print(json.dumps(verifications, indent=4, default=str))
 
     print('Most common providers from CNAME records')
-    providers = sorted_tags(results, RdataType.CNAME)
+    providers = sorted_tags(results, RRType.CNAME)
     print(json.dumps(providers, indent=4, default=str))
 
     if not skip_dump and input('Dump records to file? (y/n)') == 'y':

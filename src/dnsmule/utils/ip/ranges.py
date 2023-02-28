@@ -4,7 +4,7 @@ from typing import Set, Union, List
 
 from httpx import AsyncClient
 
-from ..config import get_logger
+from ...config import get_logger
 
 
 @dataclass

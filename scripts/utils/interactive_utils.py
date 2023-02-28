@@ -1,13 +1,11 @@
+from collections import defaultdict
 from os import cpu_count
 from typing import Callable, Coroutine, Iterable, Any, TypeVar, Dict, List
 
-from dns.name import from_text as name_from_text
-from dns.rdata import Rdata
-from dns.rdatatype import RdataType
-
-from dnsmule.queries import query_records, query
-from dnsmule.rules import Result, process_message, Rules
-from dnsmule.utils import DOMAIN_GROUP_TYPE
+from dnsmule.backends.dnspython import query_records, DNSPythonBackend
+from dnsmule.definitions import Result, Domain, RRType
+from dnsmule.rules import Rules
+from dnsmule.utils import DomainGroup
 from dnsmule.utils.asyncio import BoundedWorkQueue, ProgressReportingBoundedWorkQueue
 
 T = TypeVar('T')
@@ -45,21 +43,21 @@ def map_async_interactive(
 
 
 def gather_records_interactive(
-        grouped_domains: DOMAIN_GROUP_TYPE,
+        grouped_domains: DomainGroup,
         progress_listener: Callable[[float], Coroutine]
-) -> Dict[RdataType, List[Rdata]]:
+) -> Dict[RRType, List[Result]]:
     """Gathers DNS records (TXT, CNAME) for all domains in a group
 
     Note: This can be cancelled early with a keyboard interrupt
     """
     records = {
-        RdataType.TXT: [],
-        RdataType.CNAME: [],
+        RRType.TXT: [],
+        RRType.CNAME: [],
     }
 
     results = map_async_interactive(
         (
-            query_records(domain, RdataType.CNAME, RdataType.TXT)
+            query_records(domain, RRType.CNAME, RRType.TXT)
             for _, domains in grouped_domains.items()
             for domain in domains
         ),
@@ -75,13 +73,15 @@ def gather_records_interactive(
 
 
 def rules_async_interactive(
-        domains: DOMAIN_GROUP_TYPE,
+        domains: DomainGroup,
         rules: Rules,
         listener: Callable[[float], Coroutine[Any, Any, Any]] = None,
         all_domains: bool = False,
-) -> Dict[RdataType, List[Result]]:
+) -> Dict[RRType, List[Result]]:
     """Runs through a rule set with a bounded queue
     """
+
+    backend = DNSPythonBackend(rules)
 
     def generate_domains():
         if all_domains:
@@ -91,12 +91,14 @@ def rules_async_interactive(
         else:
             yield from domains.keys()
 
-    async def run_rules(domain: str) -> Dict[RdataType, Result]:
-        response = await query(domain, *iter(t.unwrap() for t in rules.get_rtypes()))
-        if response:
-            return process_message(rules, name_from_text(domain), response)
-        else:
-            return {}
+    async def run_rules(domain: str) -> Dict[RRType, Result]:
+        results = defaultdict(list)
+        async for result in backend.run_single(Domain(domain)):
+            results[result.type].append(result)
+        return {
+            k: sum(v[1:], start=v[0]) if len(v) != 1 else v[0]
+            for k, v in results.items()
+        }
 
     work = iter(
         run_rules(domain)

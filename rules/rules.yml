@@ -46,7 +46,7 @@ rules:
                   if key in seen:
                       return
                   seen.add(key)
-              get_logger().info(f'Found a verify record: {record.data.to_text()}')
+              get_logger().info(f'Found a verify record: %s', data)
 
   - cname_providers:
     type: dns.dynamic

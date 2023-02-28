@@ -1,7 +1,8 @@
 import pytest
 
-from dnsmule.rules import Rules, Record, Result, Rule, Type, DynamicRule
-from dnsmule.rules.utils import load_rules_from_config
+from dnsmule.definitions import Record, Result, RRType
+from dnsmule.rules import Rules, Rule, DynamicRule
+from dnsmule.rules.utils import load_rules
 
 
 @pytest.fixture
@@ -47,7 +48,7 @@ def test_rules_rule_name(rules):
     def my_cool_rule():
         pass
 
-    assert "name='my_cool_rule'" in str(rules[Type.CNAME].pop())
+    assert "name='my_cool_rule'" in str(rules[RRType.CNAME].pop())
 
 
 def test_rules_rule_unknown_type(rules):
@@ -67,7 +68,7 @@ def test_rules_factory_operation(rules):
         assert name == 'hello_world'
         return Rule(dummy)
 
-    load_rules_from_config([
+    load_rules([
         {
             'hello_world': None,
             'type': 'test',
@@ -75,7 +76,7 @@ def test_rules_factory_operation(rules):
         }
     ], rules=rules)
 
-    assert rules[Type.TXT].pop().f is dummy
+    assert rules[RRType.TXT].pop().f is dummy
 
 
 def test_rules_dynamic_factory_operation(rules):
@@ -98,7 +99,7 @@ def test_rules_dynamic_factory_operation(rules):
             """
         ))
 
-    load_rules_from_config([
+    load_rules([
         {
             'hello_world': None,
             'type': 'test',
@@ -106,7 +107,7 @@ def test_rules_dynamic_factory_operation(rules):
         }
     ], rules=rules)
 
-    assert rules.process_record(Record(**dict(domain=None, type=Type.TXT, data=None))).tags[0] == 'True'
+    assert rules.process_record(Record(**dict(domain=None, type=RRType.TXT, data=None))).tags[0] == 'True'
 
 
 def test_create_regex_rule(rules):
@@ -123,4 +124,4 @@ def test_create_regex_rule(rules):
     })
 
     assert rule.f
-    assert rule(Record(**dict(domain=None, type=Type.TXT, data='test\n'))).tags[0] == 'DNS::REGEX::TEST\n'
+    assert rule(Record(**dict(domain=None, type=RRType.TXT, data='test\n'))).tags[0] == 'DNS::REGEX::TEST\n'

@@ -103,7 +103,7 @@ def add_rule(
 The only globals passed to these methods are:
 
 - \_\_builtins\_\_
-- from dnsmule.rules.entities import Type, Record, Result, Rule, DynamicRule
+- from dnsmule.definitions import RRType, Record, Result, Rule, DynamicRule
 - add_rule
 - Any additional globals created by the code itself
 

@@ -7,10 +7,10 @@ This is the only analysis script at the moment for example usage.
 > python scripts/analyze.py -h
 
 ```
-usage: analyze.py [-h] [--sub-domain-count SDC] --limit LIMIT [--skip-dump] FILE
+usage: analyze.py [-h] [--sub-domain-count SDC] --limit LIMIT [--skip-dump] FILE RULES
 
 positional arguments:
-  FILE
+  FILE RULES
 
 options:
   -h, --help                        (Help)

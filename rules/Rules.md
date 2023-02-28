@@ -4,6 +4,29 @@ The tool configuration is done through one or multiple rule configuration files.
 [schema file](rules-schema.yml). There are some builtin rule types and it is possible to create new types by registering
 handlers programmatically.
 
+It is possible to register rules by files or by creating them programmatically.
+
+Example of programmatic usage (snippet from `dnsmule.backend.dnspython.py`):
+
+```python
+def add_ptr_scan(rules: Rules):
+    @rules.add.A
+    async def ptr_scan(record: Record):
+        from dns.rdtypes.IN import A
+        from dnsmule.config import get_logger
+        og: A = record.data.data['original']
+        records = await query_records(reverse_query.from_address(og.to_text()), RdataType.PTR)
+        if RdataType.PTR in records:
+            for r in records[RdataType.PTR]:
+                get_logger().info('PTR %s', r.to_text())
+            data: dict = record.result().data
+            if 'ptr' not in data:
+                data['ptr'] = []
+            data['ptr'].extend(r.to_text() for r in records[RdataType.PTR])
+```
+
+Any IANA defined DNS record type should work.
+
 ## Type Hints and JSON Schema (IntelliJ)
 
 It is possible to register the schema file as a custom JSON schema in IntelliJ editors.

@@ -1,19 +1,7 @@
-from dnsmule.utils.asyncio import BoundedWorkQueue, ProgressReportingBoundedWorkQueue
 import asyncio
 
-
-def async_test(test_function):
-    from functools import wraps
-
-    @wraps(test_function)
-    def run_test(*args, **kwargs):
-        loop = asyncio.new_event_loop()
-        try:
-            loop.run_until_complete(test_function(*args, **kwargs))
-        finally:
-            loop.close()
-
-    return run_test
+from _async import async_test
+from dnsmule.utils.asyncio import BoundedWorkQueue, ProgressReportingBoundedWorkQueue
 
 
 @async_test

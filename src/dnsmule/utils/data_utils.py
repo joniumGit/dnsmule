@@ -23,8 +23,8 @@ def load_data(file: str, limit: int = -1):
             yield from iter(data)
         else:
             data = iter(data)
-            for _ in range(limit):
-                yield next(data)
+            for _, v in zip(range(limit), data):
+                yield v
 
 
 __all__ = [

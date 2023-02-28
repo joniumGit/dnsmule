@@ -94,7 +94,7 @@ def rules_interactive(
     async def run_rules(domain: str) -> Dict[RRType, Result]:
         results = defaultdict(list)
         async for result in backend.run_single(Domain(domain)):
-            results[result.type].append(result)
+            results[next(iter(result.type))].append(result)
         return {
             k: sum(v[1:], start=v[0]) if len(v) != 1 else v[0]
             for k, v in results.items()

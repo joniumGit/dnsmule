@@ -1,6 +1,7 @@
 import json
 import logging
 
+from dnsmule.backends.dnspython import add_ptr_scan
 from dnsmule.config import defaults, get_logger
 from dnsmule.definitions import RRType
 from dnsmule.rules import load_config
@@ -21,16 +22,25 @@ def sorted_tags(results, rtype):
     }
 
 
+def default(o):
+    if isinstance(o, set):
+        return [RRType.to_text(i) if isinstance(i, int) else str(i) for i in o]
+    else:
+        return str(o)
+
+
 async def print_progress(progress: float):
     """Prints progress to stdout
     """
     print(f'===> {progress:.2f}%', end='\r')
 
 
-def main(file: str, rule_file: str, limit: int, count: int, skip_dump: bool, all_domains: bool):
+def main(file: str, rule_file: str, limit: int, count: int, skip_dump: bool, all_domains: bool, ptr: bool = False):
     get_logger().setLevel(logging.INFO)
     get_logger().addHandler(logging.StreamHandler())
     rules = load_config(rule_file)
+    if ptr:
+        add_ptr_scan(rules)
 
     print('Starting for', file, 'limiting to', limit, 'entries using DNS server ', defaults.DEFAULT_RESOLVER)
     data = load_data(file, limit=limit)
@@ -52,18 +62,31 @@ def main(file: str, rule_file: str, limit: int, count: int, skip_dump: bool, all
     providers = sorted_tags(results, RRType.CNAME)
     print(json.dumps(providers, indent=4, default=str))
 
+    final_results = {}
+    for _, rtype_results in results.items():
+        for result in rtype_results:
+            if result.domain not in final_results:
+                final_results[result.domain] = result
+            else:
+                final_results[result.domain] += result
+
+    from dataclasses import asdict
+    final_results = [*map(asdict, filter(bool, final_results.values()))]
+
     if not skip_dump and input('Dump records to file? (y/n)') == 'y':
         with open(input('Give output filename:'), 'w') as f:
-            from dataclasses import asdict
             json.dump(
-                {
-                    k: [asdict(e) for e in v]
-                    for k, v in results.items()
-                },
+                {'results': final_results},
                 f,
                 indent=4,
-                default=str,
+                default=default,
             )
+    else:
+        print(json.dumps(
+            {'results': final_results},
+            indent=4,
+            default=default,
+        ))
 
 
 if __name__ == '__main__':

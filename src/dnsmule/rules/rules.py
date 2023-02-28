@@ -17,10 +17,12 @@ class Rules(RuleFactoryMixIn):
         self.log = get_logger()
         self._rules = defaultdict(list)
 
-    def process_record(self, record: Record) -> Result:
+    async def process_record(self, record: Record) -> Result:
         for r in self._rules.get(record.type, []):
             try:
-                r(record)
+                t = r(record)
+                if hasattr(t, '__await__'):
+                    await t
             except Exception as e:
                 self.log.error(f'Rule {r.name} raised an exception', exc_info=e)
         return record.result()

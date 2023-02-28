@@ -20,7 +20,7 @@ class Record:
 
     def identify(self, identification: str):
         r = self.result()
-        r.tags.append(identification)
+        r.tags.add(identification)
         return r
 
     def __hash__(self):

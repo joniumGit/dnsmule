@@ -8,7 +8,6 @@ DEFAULT_RESOLVER = os.getenv('DNSMULE_RESOLVER', choice([
     '1.0.0.1',
     '8.8.8.8',
     '8.8.4.4',
-    '9.9.9.10',
 ]))
 
 __all__ = [

@@ -1,5 +1,6 @@
 import pytest
 
+from _async import async_test
 from dnsmule.definitions import Record, Result, RRType
 from dnsmule.rules import Rules, Rule, DynamicRule
 from dnsmule.rules.utils import load_rules
@@ -79,7 +80,8 @@ def test_rules_factory_operation(rules):
     assert rules[RRType.TXT].pop().f is dummy
 
 
-def test_rules_dynamic_factory_operation(rules):
+@async_test
+async def test_rules_dynamic_factory_operation(rules):
     from textwrap import dedent
 
     @rules.register('test')
@@ -107,7 +109,7 @@ def test_rules_dynamic_factory_operation(rules):
         }
     ], rules=rules)
 
-    assert rules.process_record(Record(**dict(domain=None, type=RRType.TXT, data=None))).tags[0] == 'True'
+    assert (await rules.process_record(Record(**dict(domain=None, type=RRType.TXT, data=None)))).tags[0] == 'True'
 
 
 def test_create_regex_rule(rules):

@@ -45,7 +45,7 @@ rules:
                   key = data.partition('=')[0]
                   if key in seen:
                       return
-                  seen.add(key)
+                  seen.add(key)            
               get_logger().info(f'Found a verify record: %s', data)
 
   - cname_providers:
@@ -70,5 +70,5 @@ rules:
           for key in cnames:
               _key = f'DNS::CIDER::{key.split(".")[0].upper()}'
               if key in record.data.to_text():
-                  result.tags.append(_key)
+                  result.tags.add(_key)
           return result

@@ -19,7 +19,7 @@ class Backend(ABC):
     async def run_single(self, target: Domain) -> AsyncGenerator[Result, Any]:
         types = self.rules.get_types()
         async for record in self.process(target, *types):
-            yield self.rules.process_record(record)
+            yield await self.rules.process_record(record)
 
     @abstractmethod
     def process(self, target: Domain, *types: RRType) -> AsyncGenerator[Record, Any]:

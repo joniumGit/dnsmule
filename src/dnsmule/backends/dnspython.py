@@ -1,4 +1,4 @@
-from typing import Union, Dict, Optional, AsyncGenerator, Any, List
+from typing import Union, Dict, AsyncGenerator, Any, List
 
 import dns.reversename as reverse_query
 from dns.asyncquery import udp_with_fallback
@@ -12,6 +12,7 @@ from dns.rrset import RRset
 from .abstract import Backend
 from ..config import defaults, get_logger
 from ..definitions import Record, Result, RRType, Data, Domain
+from ..rules import Rules
 
 
 def process_message(domain: Domain, message: Message) -> Dict[RRType, Result]:
@@ -45,7 +46,7 @@ async def query(
         host: Union[str, Name],
         *types: int,
         resolver: str = defaults.DEFAULT_RESOLVER,
-) -> Optional[Message]:
+) -> AsyncGenerator[Any, Message]:
     for dns_type in types:
         dns_type = RdataType.make(dns_type)
         if not is_metatype(dns_type):
@@ -55,7 +56,7 @@ async def query(
                 response, used_tcp = await udp_with_fallback(_query, resolver, timeout=2)
                 if used_tcp:
                     get_logger().debug('[%s, %s] Used TCP fallback query', host, dns_type)
-                return response
+                yield response
             except Timeout:
                 get_logger().error('[%s, %s] Timed out query', host, dns_type)
 
@@ -66,17 +67,17 @@ async def query_records(host: Union[str, Name], *types: int, **kwargs) -> Dict[i
         for t in types
     }
     for record_type in types:
-        for record in (await query(host, record_type, **kwargs)).answer:
-            if record.rdtype == record_type:
-                out[record_type].extend(record)
+        async for record in query(host, record_type, **kwargs):
+            for answer in record.answer:
+                if answer.rdtype == record_type:
+                    out[record_type].extend(answer)
     return out
 
 
 class DNSPythonBackend(Backend):
 
     async def process(self, target: Domain, *types: RRType) -> AsyncGenerator[Record, Any]:
-        message = await query(target.name, *iter(RdataType.make(t) for t in types))
-        if message:
+        async for message in query(target.name, *iter(RdataType.make(t) for t in types)):
             for record in process_message(target, message):
                 yield record
 
@@ -96,9 +97,26 @@ async def a_to_ptr(host: str, **kwargs) -> List[Rdata]:
     return out
 
 
+def add_ptr_scan(rules: Rules):
+    @rules.add.A
+    async def ptr_scan(record: Record):
+        from dns.rdtypes.IN import A
+        from dnsmule.config import get_logger
+        og: A = record.data.data['original']
+        records = await query_records(reverse_query.from_address(og.to_text()), RdataType.PTR)
+        if RdataType.PTR in records:
+            for r in records[RdataType.PTR]:
+                get_logger().info('PTR %s', r.to_text())
+            data: dict = record.result().data
+            if 'ptr' not in data:
+                data['ptr'] = []
+            data['ptr'].extend(r.to_text() for r in records[RdataType.PTR])
+
+
 __all__ = [
     'DNSPythonBackend',
     'query_records',
     'a_to_ptr',
     'query',
+    'add_ptr_scan',
 ]

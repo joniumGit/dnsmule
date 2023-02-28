@@ -11,7 +11,7 @@ from dnsmule.utils.asyncio import BoundedWorkQueue, ProgressReportingBoundedWork
 T = TypeVar('T')
 
 
-def map_async_interactive(
+def map_interactive(
         work: Iterable[Coroutine[Any, Any, T]],
         bound: int,
         listener: Callable[[float], Coroutine[Any, Any, Any]] = None,
@@ -42,7 +42,7 @@ def map_async_interactive(
     return result
 
 
-def gather_records_interactive(
+def gather_interactive(
         grouped_domains: DomainGroup,
         progress_listener: Callable[[float], Coroutine]
 ) -> Dict[RRType, List[Result]]:
@@ -55,7 +55,7 @@ def gather_records_interactive(
         RRType.CNAME: [],
     }
 
-    results = map_async_interactive(
+    results = map_interactive(
         (
             query_records(domain, RRType.CNAME, RRType.TXT)
             for _, domains in grouped_domains.items()
@@ -72,7 +72,7 @@ def gather_records_interactive(
     return records
 
 
-def rules_async_interactive(
+def rules_interactive(
         domains: DomainGroup,
         rules: Rules,
         listener: Callable[[float], Coroutine[Any, Any, Any]] = None,
@@ -105,7 +105,7 @@ def rules_async_interactive(
         for domain in generate_domains()
     )
 
-    data = map_async_interactive(work, bound=cpu_count(), listener=listener)
+    data = map_interactive(work, bound=cpu_count(), listener=listener)
     reduced = {}
 
     for entry in data:
@@ -118,7 +118,7 @@ def rules_async_interactive(
 
 
 __all__ = [
-    'map_async_interactive',
-    'gather_records_interactive',
-    'rules_async_interactive',
+    'map_interactive',
+    'gather_interactive',
+    'rules_interactive',
 ]

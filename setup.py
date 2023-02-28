@@ -28,10 +28,14 @@ setup(
     python_requires='>=3',
     install_requires=[
         'dnspython',
-        'httpx',
         'pyyaml',
-        # 'redis',
     ],
+    extra_requires={
+        'optional': [
+            'httpx',
+            'cryptography',
+        ]
+    },
     project_urls={
         'Bug Reports': 'https://github.com/joniumGit/dnsmule',
         'Source': 'https://github.com/joniumGit/dnsmule',

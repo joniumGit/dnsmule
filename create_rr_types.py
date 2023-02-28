@@ -50,7 +50,7 @@ if __name__ == '__main__':
 
     print(records)
 
-    with open(pathlib.Path(__file__).parent.parent / 'src' / 'dnsmule' / 'definitions' / 'rrtypes.py', 'w') as f:
+    with open(pathlib.Path(__file__).parent / 'src' / 'dnsmule' / 'definitions' / 'rrtype.py', 'w') as f:
         f.write(textwrap.dedent(
             # language=python
             """
@@ -58,21 +58,25 @@ if __name__ == '__main__':
             from typing import Any, Union
             
             
-            class RRTypes(IntEnum):
+            class RRType(IntEnum):
             
                 @classmethod
-                def to_text(cls, value: Union['RRTypes', int]) -> str:
+                def to_text(cls, value: Union['RRType', int]) -> str:
                     for k, v in cls.__members__.items():
                         if v == value:
                             return k
                     return f'UNKNOWN({value})'
             
                 @classmethod
-                def from_any(cls, value: Union[int, str, Any]) -> 'RRTypes':
-                    if value in cls.__members__:
-                        return cls.__members__[value]
-                    elif value.startswith('UNKNOWN('):
-                        value = int(value.removeprefix('UNKNOWN(').removesuffix(')'))
+                def from_any(cls, value: Union[int, str, Any]) -> 'RRType':
+                    if isinstance(value, str):
+                        value = value.upper()
+                        if value in cls.__members__:
+                            return cls.__members__[value]
+                        elif value.startswith('UNKNOWN('):
+                            value = int(value.removeprefix('UNKNOWN(').removesuffix(')'))
+                        else:
+                            value = int(value)
                     else:
                         value = int(value)
                     for _, v in cls.__members__.items():
@@ -97,7 +101,7 @@ if __name__ == '__main__':
         f.write(textwrap.dedent(
             """
             __all__ = [
-                'RRTypes',
+                'RRType',
             ]
             """
         ))

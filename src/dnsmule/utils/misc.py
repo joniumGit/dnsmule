@@ -31,7 +31,7 @@ def resolve_domain_from_certificates(ip: str, port: int = 443) -> List[str]:
     >>> resolve_domain_from_certificates('127.0.0.1')
     []
     """
-    from .ip import certificates  # Import here to not crash on doctest
+    from .http import certificates  # Import here to not crash on doctest
     cert = certificates.collect_certificate(ip, port=port)
     if cert is not None:
         return [cert.common, *cert.alts]

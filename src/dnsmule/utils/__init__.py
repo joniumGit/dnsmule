@@ -1,3 +1,4 @@
 from .comaparable import Comparable
-from .ip import *
+from .data_utils import *
+from .iter_utils import *
 from .misc import *

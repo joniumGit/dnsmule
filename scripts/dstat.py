@@ -33,7 +33,7 @@ Creates a list of top domains from a file::
 from argparse import ArgumentParser
 from typing import List
 
-from utils import limit, count_by, load_data
+from dnsmule.utils import limit, count_by, load_data
 
 
 def main(file_lines: List[str], n: int = 10):

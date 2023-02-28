@@ -4,9 +4,8 @@ import logging
 from dnsmule.config import defaults, get_logger
 from dnsmule.definitions import RRType
 from dnsmule.rules import load_config
-from dnsmule.utils import group_domains, generate_most_common_subdomains
-from utils.data_utils import load_data
-from utils.interactive_utils import rules_async_interactive
+from dnsmule.utils import group_domains, generate_most_common_subdomains, load_data
+from utils.interactive_utils import rules_interactive
 
 
 def sorted_tags(results, rtype):
@@ -42,7 +41,7 @@ def main(file: str, rule_file: str, limit: int, count: int, skip_dump: bool, all
         print(f'{count: >8d} {subdomain}')
 
     print('Fetching dns records, this will take a while...')
-    results = rules_async_interactive(fi_domains, rules, listener=print_progress, all_domains=all_domains)
+    results = rules_interactive(fi_domains, rules, listener=print_progress, all_domains=all_domains)
     print()
 
     print('Most common services from TXT records')

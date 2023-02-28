@@ -1,5 +1,6 @@
-from setuptools import setup, find_packages
 from pathlib import Path
+
+from setuptools import setup, find_packages
 
 here = Path(__file__).parent.resolve()
 long_description = (here / 'README.md').read_text(encoding='utf-8')
@@ -23,7 +24,7 @@ setup(
     ],
     keywords='DNS, Dependency',
     package_dir={'': 'src'},
-    packages=find_packages(where='src'),
+    packages=find_packages(where='src', include=('dnsmule', 'dnsmule.*')),
     python_requires='>=3',
     install_requires=[
         'dnspython',

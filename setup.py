@@ -7,7 +7,7 @@ long_description = (here / 'README.md').read_text(encoding='utf-8')
 
 setup(
     name='dnsmule',
-    version='0.0.1-dev',
+    version='0.0.1',
     description='DNS Based Dependency Detection',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -30,10 +30,14 @@ setup(
         'dnspython',
         'pyyaml',
     ],
-    extra_requires={
+    extras_require={
         'optional': [
             'httpx',
             'cryptography',
+        ],
+        'dev': [
+            'pytest',
+            'pytest-cov',
         ]
     },
     project_urls={

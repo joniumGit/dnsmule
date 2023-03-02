@@ -165,10 +165,12 @@ async def test_queue_results_bounded_return_order_1_iterating(create_item):
     """
     queue = BoundedWorkQueue(
         [
-            create_item(1, wait=.31),
+            create_item(1, wait=.3),
             create_item(2, wait=.3),
             create_item(3, wait=.2),
         ],
         bound=2,
     )
-    assert [value async for value in queue.iterate()] == [[2, 1], [3]], 'Wrong order on bounded iteration'
+
+    # Use sets as it is hard to control the in-set order
+    assert [set(value) async for value in queue.iterate()] == [{2, 1}, {3}], 'Wrong order on bounded iteration'

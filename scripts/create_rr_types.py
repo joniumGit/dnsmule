@@ -63,39 +63,47 @@ if __name__ == '__main__':
             
             
             class RRType(IntEnum):
-            
+
+                @staticmethod
+                def _check_range(value: int):
+                    try:
+                        if not 0 <= value <= 65535:
+                            raise ValueError('Value our of bounds for RR [0, 65535]', value)
+                    except TypeError as e:
+                        raise ValueError('Value could not be compared', value) from e
+                        
                 @classmethod
                 def to_text(cls, value: Union['RRType', int]) -> str:
+                    RRType._check_range(value)
                     for k, v in cls.__members__.items():
                         if v == value:
                             return k
-                    return f'UNKNOWN({value})'
+                    return f'RRType.of({value})'
             
                 @classmethod
-                def from_any(cls, value: Union[int, str, Any]) -> 'RRType':
+                def from_any(cls, value: Union[int, str, Any]) -> Union['RRType', int]:
                     if isinstance(value, str):
                         value = value.upper()
+                        prefix = 'RRtype.of('.upper()
                         if value in cls.__members__:
                             return cls.__members__[value]
-                        elif value.startswith('UNKNOWN('):
-                            value = int(value.removeprefix('UNKNOWN(').removesuffix(')'))
+                        elif value.startswith(prefix):
+                            value = int(value.removeprefix(prefix).removesuffix(')'))
                         else:
                             value = int(value)
-                    else:
-                        value = int(value)
-                    for _, v in cls.__members__.items():
-                        if v == value:
+                    RRType._check_range(value)
+                    for k, v in cls.__members__.items():
+                        if k == value or v == value:
                             return v
-                
+                    return int(value)
+            
                 @classmethod
-                def from_text(cls, value: str):
-                    return cls(value=cls.from_any(value))
-                            
-                def __str__(self):
-                    return self.to_text(self.value)
+                def from_text(cls, value: str) -> Union['RRType', int]:
+                    return cls.from_any(value)
                     
-                def __repr__(self):
-                    return self.__str__()
+                @classmethod
+                def of(cls, value: int) -> Union['RRType', int]:
+                    return cls.from_any(value)
             
             """
         ).lstrip())

@@ -53,13 +53,13 @@ async def scan_domain(tasks: BackgroundTasks, domain: str = domain_query()):
 def get_domain(domain: str = domain_query(None)):
     if domain:
         if domain in results:
-            return results[domain].to_dict()
+            return results[domain].to_json()
         else:
             return Response(status_code=404)
     else:
         return {
             'results': [
-                result.to_dict()
+                result.to_json()
                 for result in results.values()
             ]
         }

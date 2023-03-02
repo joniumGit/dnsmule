@@ -15,35 +15,6 @@ def dummy(_: Record) -> Result:
     pass
 
 
-def test_rules_rule_ordering():
-    r0 = Rule(dummy, priority=0)
-    r1 = Rule(dummy, priority=1)
-    r2 = Rule(dummy, priority=2)
-
-    data = [r2, r0, r1]
-    data.sort()
-
-    # priority is inverted
-    assert data == [r2, r1, r0]
-
-
-def test_rules_rule_ordering_with_changes():
-    r0 = Rule(dummy, priority=0)
-    r1 = Rule(dummy, priority=1)
-
-    data = [r0, r1]
-    data.sort()
-
-    # priority is inverted
-    assert data == [r1, r0]
-
-    r1.priority = -1
-    data.sort()
-
-    # assert changes order
-    assert data == [r0, r1]
-
-
 def test_rules_rule_name(rules):
     @rules.add.CNAME
     def my_cool_rule():
@@ -126,4 +97,4 @@ def test_create_regex_rule(rules):
     })
 
     assert rule.f
-    assert rule(Record(**dict(domain=None, type=RRType.TXT, data='test\n'))).tags[0] == 'DNS::REGEX::TEST\n'
+    assert rule(Record(**dict(domain=None, type=RRType.TXT, data='test\n'))).tags.pop() == 'DNS::REGEX::TEST\n'

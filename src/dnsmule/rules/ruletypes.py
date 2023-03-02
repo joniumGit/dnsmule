@@ -60,7 +60,11 @@ class RegexRule(Rule):
             m = p.search(self.get_attribute(record))
             if m:
                 _id = self.identification if self.group is None else m.group(self.group)
-                return record.identify(f'DNS::REGEX::{self.name.upper()}::{_id.upper()}')
+                if _id:
+                    _id = _id.upper()
+                else:
+                    _id = 'UNKNOWN'
+                return record.identify(f'DNS::REGEX::{self.name.upper()}::{_id}')
 
 
 class DynamicRule(Rule):

@@ -1,6 +1,4 @@
-from typing import Dict, Any
-
-from ..utils import lmerge
+from typing import Dict, Any, Union
 
 
 class Domain:
@@ -11,25 +9,20 @@ class Domain:
         self.name = name
         self.data = {**kwargs}
 
-    def __add__(self, other: 'Domain'):
-        if self.name != other.name and not self.is_subdomain(other):
-            raise ValueError('Can not add two different domains')
-        lmerge(self.data, other.data)
-
     def __hash__(self):
         return hash(self.name)
 
-    def __eq__(self, other):
+    def __eq__(self, other: 'Domain'):
         return isinstance(other, Domain) and other.name == self.name or other == self.name
 
-    def is_subdomain(self, other: 'Domain'):
+    def is_subdomain(self, other: Union['Domain', str]):
+        """True if the 'other' value is a subdomain of this
+        """
+        if isinstance(other, str):
+            other = Domain(other)
         parts_self = self.name.split('.')
         parts_other = other.name.split('.')
-        return parts_other[-len(parts_self):] == parts_self
-
-    @classmethod
-    def from_text(cls, value: str):
-        return cls(value)
+        return len(parts_self) < len(parts_other) and parts_other[-len(parts_self):] == parts_self
 
     def __str__(self):
         return self.name

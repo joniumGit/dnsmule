@@ -27,17 +27,9 @@ class RuleFactoryMixIn:
         return decorator
 
 
-def dns_create_regex_rule(**kwargs) -> RegexRule:
-    return RegexRule(**kwargs)
-
-
-def dns_create_dynamic_rule(**kwargs) -> Rule:
-    return DynamicRule(**kwargs)
-
-
 def add_default_factories(factory_storage: RuleFactoryMixIn) -> None:
-    factory_storage.register('dns.dynamic')(dns_create_dynamic_rule)
-    factory_storage.register('dns.regex')(dns_create_regex_rule)
+    factory_storage.register('dns.dynamic')(DynamicRule)
+    factory_storage.register('dns.regex')(RegexRule)
 
 
 __all__ = [

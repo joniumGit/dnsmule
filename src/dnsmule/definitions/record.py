@@ -29,7 +29,7 @@ class Record:
         return self._result
 
     def identify(self, identification: str):
-        r = self._result
+        r = self.result()
         r.tags.add(identification)
         return r
 

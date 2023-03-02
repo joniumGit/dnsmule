@@ -45,3 +45,9 @@ def test_record_not_equals_different_type():
 def test_record_hash_is_tuple_domain_type():
     r = Record(domain='example.com', type=RRType.A, data='data')
     assert hash(r) == hash((r.domain, r.type)), 'Hash result was unexpected'
+
+
+def test_record_identify():
+    r = Record(domain='example.com', type=RRType.A, data='data')
+    res = r.identify('a')
+    assert next(iter(res.tags)) == 'a'

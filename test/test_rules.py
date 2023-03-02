@@ -80,14 +80,15 @@ async def test_rules_dynamic_factory_operation(rules):
         }
     ], rules=rules)
 
-    assert (await rules.process_record(Record(**dict(domain=None, type=RRType.TXT, data=None)))).tags[0] == 'True'
+    result = await rules.process_record(Record(domain='example.com', type=RRType.TXT, data='data'))
+    assert next(iter(result.tags)) == 'True'
 
 
 def test_create_regex_rule(rules):
     rule = rules.create_rule({
         'type': 'dns.regex',
         'name': 'test',
-        'pattern': '^(test.)$',
+        'pattern': '(test.)',
         'attribute': '__str__',
         'group': 1,
         'flags': [
@@ -97,4 +98,6 @@ def test_create_regex_rule(rules):
     })
 
     assert rule.f
-    assert rule(Record(**dict(domain=None, type=RRType.TXT, data='test\n'))).tags.pop() == 'DNS::REGEX::TEST\n'
+
+    res = rule(Record(domain='example.com', type=RRType.TXT, data='test\n'))
+    assert next(iter(res.tags)) == 'DNS::REGEX::TEST::TEST\n'

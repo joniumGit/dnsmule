@@ -5,7 +5,7 @@ from dnsmule.backends.dnspython import add_ptr_scan
 from dnsmule.config import defaults, get_logger
 from dnsmule.definitions import RRType
 from dnsmule.rules import load_config
-from dnsmule.utils import group_domains, generate_most_common_subdomains, load_data
+from dnsmule.utils import group_domains_filtered_by, generate_most_common_subdomains, load_data
 from utils.interactive_utils import rules_interactive
 
 
@@ -44,7 +44,7 @@ def main(file: str, rule_file: str, limit: int, count: int, skip_dump: bool, all
 
     print('Starting for', file, 'limiting to', limit, 'entries using DNS server ', defaults.DEFAULT_RESOLVER)
     data = load_data(file, limit=limit)
-    fi_domains = group_domains('.fi', data)
+    fi_domains = group_domains_filtered_by('.fi', data)
 
     print('Showing common subdomains with count >', count)
     for subdomain, count in generate_most_common_subdomains(fi_domains, count):

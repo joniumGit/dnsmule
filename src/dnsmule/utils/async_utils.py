@@ -27,18 +27,18 @@ class BoundedWorkQueue(Generic[T]):
                     break
 
     async def _wait_for_next(self):
-        done, pending = await aio.wait(self.tasks, return_when=aio.FIRST_COMPLETED)
-        self.tasks = deque(pending)
-        self.results.extend(t.result() for t in done)
+        try:
+            done, pending = await aio.wait(self.tasks, return_when=aio.FIRST_COMPLETED)
+            self.tasks = deque(pending)
+            self.results.extend(t.result() for t in done)
+        except:
+            await self.cancel()
+            raise
 
     async def iterate(self):
         while self.tasks or self.waiting:
             self._populate()
             await self._wait_for_next()
-            _results = self.results
-            self.results = deque()
-            yield [*_results]
-        if self.results:
             _results = self.results
             self.results = deque()
             yield [*_results]
@@ -51,12 +51,9 @@ class BoundedWorkQueue(Generic[T]):
 
     async def cancel(self):
         import contextlib
-        for coro in self.waiting:
-            with contextlib.suppress(aio.CancelledError, RuntimeError):
-                coro.close()
-        remaining = aio.gather(*self.tasks, return_exceptions=False)
+        remaining = aio.gather(*self.tasks, *self.waiting, return_exceptions=False)
         remaining.cancel()
-        with contextlib.suppress(aio.CancelledError, RuntimeError):
+        with contextlib.suppress(aio.CancelledError):
             await remaining
 
 

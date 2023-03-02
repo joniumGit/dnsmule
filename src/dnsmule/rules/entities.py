@@ -33,8 +33,7 @@ class Rule(metaclass=Comparable, key='priority', reverse=True):
             if f is None:
                 raise ValueError('Rule function was None')
             self.f = f
-            if 'f' not in self._properties:
-                self._properties.insert(1, 'f')
+            self._properties.insert(1, 'f')
         if not self.name and hasattr(self.f, '__name__'):
             self.name = self.f.__name__
 

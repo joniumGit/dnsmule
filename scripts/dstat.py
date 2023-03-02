@@ -51,8 +51,8 @@ def main(file_lines: List[str], n: int = 10):
     print()
     print('Top sub-domains')
     for idx, (domain, count) in enumerate(limit(count_by(
-            file_lines,
-            lambda e: e.split('.')[-3] if len(e.split('.')) >= 3 else None
+            filter(lambda o: o.count('.') >= 3, file_lines),
+            lambda e: e.split('.')[-3]
     ), n=n)):
         print(f'{idx: <5d} {count: >8d}', domain)
     print()

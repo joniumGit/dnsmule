@@ -28,7 +28,7 @@ class RegexRule(Rule):
         all_flags = {k.lower(): v for k, v in re.RegexFlag.__members__.items()}
 
         if self.flags:
-            flags = [all_flags[flag] for flag in map(str.lower, self.flags) if flag in all_flags]
+            flags = [all_flags[str(flag)] for flag in map(str.lower, self.flags) if flag in all_flags]
             if len(flags) != len(self.flags):
                 raise ValueError('Invalid Regex Flags')
             flags = functools.reduce(operator.or_, flags)
@@ -74,11 +74,13 @@ class DynamicRule(Rule):
         super().__init__(**kwargs)
         self._globals = {
             '__builtins__': __builtins__,
-            'RRTypes': RRType,
+            'RRType': RRType,
             'Record': Record,
             'Result': Result,
         }
-        self._code = compile(self.code, __file__, 'exec')
+        if not self.code:
+            raise ValueError('No code provided')
+        self._code = compile(self.code, 'dynamic_rule.py', 'exec')
 
     def init(self, create_callback: RuleFactory):
         def add_rule(record_type: Any, rule_type: str, name: str, priority: int = 0, **options):

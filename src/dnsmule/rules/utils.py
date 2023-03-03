@@ -15,7 +15,7 @@ def load_and_append_rule(rules: Rules, rule_definition: Dict):
     rule_record_type = RRType.from_any(rule_definition.pop('record'))
     rule = rules.create_rule(rule_definition)
     if isinstance(rule, DynamicRule):
-        rule.init(partial(load_and_append_rule, factory_provider=rules))
+        rule.init(partial(load_and_append_rule, rules))
     rules.add_rule(rule_record_type, rule)
 
 
@@ -29,7 +29,7 @@ def load_rules(config: List[Dict[str, Any]], rules: Rules = None) -> Rules:
         name = next(iter(rule_definition.keys()))
         if 'name' not in rule_definition:
             rule_definition['name'] = name
-            rule_definition.pop(name)
+        rule_definition.pop(name)
         load_and_append_rule(rules, rule_definition)
     return rules
 

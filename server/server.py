@@ -79,10 +79,10 @@ def get_rules():
 @app.post('/rules', status_code=201)
 def create_rule(definition: RuleDefinition):
     with rules_lock:
-        getattr(rules.add, definition.record)(
-            name=definition.name,
-            **definition.config,
-        )
+        definition.config['name'] = definition.name
+        definition.config['type'] = definition.type
+        rule = rules.create_rule(definition.config)
+        rules.add_rule(definition.record, rule)
 
 
 @app.delete('/rules', status_code=204)

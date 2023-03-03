@@ -19,7 +19,7 @@ class Rule(metaclass=Comparable, key='priority', reverse=True):
         _keys = {
             k: v
             for k, v in kwargs.items()
-            if not (k.startswith('__') and k.endswith('__'))
+            if not k.startswith('_')
         }
         self.__dict__.update(_keys)
         self._properties = [*_keys.keys()]

@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-from ipaddress import IPv4Network, IPv6Network
+from ipaddress import IPv4Network, IPv6Network, IPv4Address, IPv6Address
 from typing import Set, Union, List
 
 from httpx import AsyncClient
 
-from ...config import get_logger
+from dnsmule.config import get_logger
 
 
 @dataclass
@@ -12,6 +12,14 @@ class IPvXRange:
     address: Union[IPv4Network, IPv6Network]
     region: str
     service: str
+
+    def __contains__(self, item: Union[str, IPv4Address, IPv6Address]):
+        if isinstance(item, str):
+            if isinstance(self.address, IPv4Network):
+                item = IPv4Address(item)
+            else:
+                item = IPv6Address(item)
+        return item in self.address
 
 
 async def fetch_google_ip_ranges_goog() -> Set[IPv4Network]:
@@ -50,7 +58,7 @@ async def fetch_google_ip_ranges_cloud() -> List[IPvXRange]:
         IPvXRange(
             address=IPv4Network(e['ipv4Prefix']) if 'ipv4Prefix' in e else IPv6Network(e['ipv6Prefix']),
             region=e['scope'],
-            service=f'GOOGLE::{e["service"]}'.upper(),
+            service=f'GOOGLE::{e["service"] or "GENERIC"}'.upper(),
         )
         for e in data['prefixes']
     ]
@@ -90,11 +98,11 @@ async def fetch_amazon_ip_ranges() -> List[IPvXRange]:
         ),
         *(
             IPvXRange(
-                address=IPv4Network(e['ipv6_prefix']),
+                address=IPv6Network(e['ipv6_prefix']),
                 region=e['region'],
-                service=f'AMAZON::{e["service"]}'.upper(),
+                service=f'AMAZON::{e["service"] or "GENERIC"}'.upper(),
             )
-            for e in data['prefixes']
+            for e in data['ipv6_prefixes']
         )
     ]
 
@@ -131,35 +139,16 @@ async def fetch_microsoft_ip_ranges() -> List[IPvXRange]:
         IPvXRange(
             address=IPv6Network(a) if ':' in a else IPv4Network(a),
             region=e['properties']['region'],
-            service=f'MICROSOFT::{e["properties"]["systemService"]}'.upper(),
+            service=f'MICROSOFT::{e["properties"]["systemService"] or "GENERIC"}'.upper(),
         )
         for e in data['values']
         for a in e['properties']['addressPrefixes']
     ]
 
 
-async def fetch_ip_ranges() -> List[IPvXRange]:
-    services = [
-        *(
-            await fetch_google_ip_ranges()
-        ),
-        *(
-            await fetch_amazon_ip_ranges()
-        ),
-        *(
-            await fetch_microsoft_ip_ranges()
-        ),
-    ]
-
-    per_service_counts = {}
-    for e in services:
-        s = e['service']
-        if s in per_service_counts:
-            per_service_counts[s] += 1
-        else:
-            per_service_counts[s] = 0
-
-    from pprint import pprint
-    pprint(per_service_counts, indent=4)
-
-    return services
+__all__ = [
+    'IPvXRange',
+    'fetch_amazon_ip_ranges',
+    'fetch_google_ip_ranges',
+    'fetch_microsoft_ip_ranges',
+]

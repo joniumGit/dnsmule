@@ -53,22 +53,6 @@ def lmerge(a: Dict[str, Any], b: Dict[str, Any]):
             a[k] += b[k]
 
 
-def resolve_domain_from_certificates(ip: str, port: int = 443) -> List[str]:
-    """Returns all names from a certificate retrieved from an ip-address
-
-    Common name is the first one if available followed by any alternative names
-
-    >>> resolve_domain_from_certificates('10.0.0.1')
-    []
-    """
-    from .http_utils import certificates  # Import here to not crash on doctest
-    cert = certificates.collect_certificate(ip, port=port)
-    if cert is not None:
-        return [cert.common, *cert.alts]
-    else:
-        return []
-
-
 def process_domains(*domains: str) -> List[str]:
     """De-duplicates and removes star domains from the input and creates all valid super domains
     
@@ -149,7 +133,6 @@ if __name__ == '__main__':  # pragma: nocover
 
 __all__ = [
     'process_domains',
-    'resolve_domain_from_certificates',
     'group_domains_filtered_by',
     'generate_most_common_subdomains',
     'lmerge',

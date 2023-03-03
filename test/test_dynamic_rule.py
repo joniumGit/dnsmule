@@ -18,7 +18,7 @@ def test_dynamic_rule_without_process_or_init():
 
     r.init(lambda *_: DynamicRule())
 
-    assert r._globals['a'] == 10, 'Globals not updated on init'
+    assert r.globals['a'] == 10, 'Globals not updated on init'
 
 
 def test_dynamic_rule_callback_called(code='add_rule("a", "b", "c")'):
@@ -81,4 +81,4 @@ def test_dynamic_rule_globals_persist():
     )
     r.init(None)
     r(1)
-    assert r._globals['a'] == 20, 'Globals did not persist'
+    assert r.globals['a'] == 20, 'Globals did not persist'

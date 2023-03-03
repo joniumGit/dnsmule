@@ -69,10 +69,11 @@ class RegexRule(Rule):
 
 class DynamicRule(Rule):
     code: str
+    globals: dict
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._globals = {
+        self.globals = {
             '__builtins__': __builtins__,
             'RRType': RRType,
             'Record': Record,
@@ -91,14 +92,14 @@ class DynamicRule(Rule):
                 **options,
             })
 
-        self._globals['add_rule'] = add_rule
-        exec(self._code, self._globals)
-        if 'init' in self._globals:
-            eval('init()', self._globals)
+        self.globals['add_rule'] = add_rule
+        exec(self._code, self.globals)
+        if 'init' in self.globals:
+            eval('init()', self.globals)
 
     def __call__(self, record: Record) -> Result:
-        if 'process' in self._globals:
-            return eval('process(record)', self._globals, {'record': record})
+        if 'process' in self.globals:
+            return eval('process(record)', self.globals, {'record': record})
 
 
 __all__ = [

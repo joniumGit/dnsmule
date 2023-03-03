@@ -1,5 +1,4 @@
 import pathlib
-from types import SimpleNamespace
 
 import pytest
 
@@ -126,33 +125,3 @@ def test_most_common_subdomains():
         },
         1
     )] == [('a', 2)]
-
-
-@pytest.mark.parametrize('cert,result', [
-    (None, []),
-    (SimpleNamespace(
-        common='common.common',
-        alts=[
-            'alt.common',
-            'alt2.common',
-        ]
-    ), [
-         'common.common',
-         'alt.common',
-         'alt2.common',
-     ])
-])
-def test_collect_certificate_return(cert, result):
-    from dnsmule.utils import http_utils
-
-    old_module = http_utils.certificates
-
-    try:
-        def mock(*_, **__):
-            return cert
-
-        http_utils.certificates = SimpleNamespace(collect_certificate=mock)
-
-        assert resolve_domain_from_certificates('', 10) == result
-    finally:
-        http_utils.certificates = old_module

@@ -105,7 +105,7 @@ async def test_backends_dnspython_dns_query(monkeypatch):
 
         marker = object()
         return_store.append(marker)
-        results = [o async for o in backend._dns_query('example.com', 1)]
+        results = [o async for o in backend.dns_query('example.com', 1)]
 
         assert len(results) == 1, 'Failed to produce result'
         assert results[0] is marker, 'Failed to produce correct result'
@@ -138,7 +138,7 @@ async def test_backends_dnspython_dns_query_timeout(monkeypatch):
         ctx.setattr(dnspython, 'get_logger', mock_logger)
         backend = DNSPythonBackend()
 
-        results = [o async for o in backend._dns_query('example.com', 1)]
+        results = [o async for o in backend.dns_query('example.com', 1)]
         assert len(results) == 0, 'Produced result even with timeout'
         assert called == ['debug', 'error'], 'Failed to log timeout'
 
@@ -163,7 +163,7 @@ async def test_backends_dnspython_process():
         yield message
 
     backend._process_message = yield_transparent_process
-    backend._dns_query = yield_transparent_query
+    backend.dns_query = yield_transparent_query
 
     results = [o async for o in backend.process(MockTarget(), 1, 2, 3)]
     assert results[0] is marker, 'Wrong result'

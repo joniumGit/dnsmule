@@ -45,7 +45,7 @@ class DNSPythonBackend(Backend):
             raise ValueError(f'Invalid query mode ({self.querier})')
         self.enable_data_extension()
 
-    async def _dns_query(
+    async def dns_query(
             self,
             host: Union[str, Name],
             *types: int,
@@ -83,7 +83,7 @@ class DNSPythonBackend(Backend):
                 )
 
     async def process(self, target: Domain, *types: RRType) -> AsyncGenerator[Record, Any]:
-        async for message in self._dns_query(target.name, *iter(RdataType.make(t) for t in types)):
+        async for message in self.dns_query(target.name, *iter(RdataType.make(t) for t in types)):
             for record in self._process_message(target, message):
                 yield record
 

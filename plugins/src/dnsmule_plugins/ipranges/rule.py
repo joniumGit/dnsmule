@@ -52,12 +52,16 @@ class IpRangeChecker(DynamicRule):
                 pass
             raise
 
-    async def __call__(self, record: Record) -> Result:
+    async def check_fetch(self):
         if hasattr(self, '_task'):
             await self._task
-        elif datetime.datetime.now() - self.last_fetch > datetime.timedelta(hours=1):
+        elif not self.last_fetch or abs(datetime.datetime.now() - self.last_fetch) > datetime.timedelta(hours=1):
+            self.provider_ranges.clear()
             self.start_fetching()
             await self._task
+
+    async def __call__(self, record: Record) -> Result:
+        await self.check_fetch()
         result = record.result()
         address: str = record.data.to_text()
         for provider, p_ranges in self.provider_ranges.items():

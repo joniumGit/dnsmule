@@ -30,7 +30,7 @@ class PTRScan(Rule):
             for t in types
         }
         for record_type in types:
-            async for record in self._backend._dns_query(host, record_type):
+            async for record in self._backend.dns_query(host, record_type):
                 for answer in record.answer:
                     if answer.rdtype == record_type:
                         out[record_type].extend(answer)

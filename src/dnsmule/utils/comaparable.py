@@ -34,13 +34,13 @@ class Comparable(type):
                 def __getattr__(self, item):
                     if item == SORT_KEY:
                         return -getattr(self, key)
-                    raise AttributeError()
+                    raise AttributeError(f'{type(self)}: {item}')
         else:
             class ComparisonMixin(ComparisonMixinBase):
                 def __getattr__(self, item):
                     if item == SORT_KEY:
                         return getattr(self, key)
-                    raise AttributeError()
+                    raise AttributeError(f'{type(self)}: {item}')
 
         instance = super().__new__(
             mcs,

@@ -31,10 +31,6 @@ setup(
         'pyyaml',
     ],
     extras_require={
-        'optional': [
-            'httpx',
-            'cryptography',
-        ],
         'dev': [
             'pytest',
             'pytest-cov',

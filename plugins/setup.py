@@ -8,7 +8,7 @@ long_description = (here / 'README.md').read_text(encoding='utf-8')
 setup(
     name='dnsmule_plugins',
     version='0.0.1',
-    description='Cloud Provider IPRanges Plugin for DNSMule',
+    description='Plugins for DNSMule',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/joniumGit/dnsmule',
@@ -24,10 +24,12 @@ setup(
     ],
     keywords='DNS, Dependency, IP, Cloud',
     package_dir={'': 'src'},
-    packages=find_packages(where='src', include=('dnsmule_ipranges', 'dnsmule_ipranges.*')),
+    packages=find_packages(where='src', include=('dnsmule_plugins', 'dnsmule_plugins.*')),
     python_requires='>=3',
     install_requires=[
         'dnsmule',
+        'httpx',
+        'cryptography',
     ],
     project_urls={
         'Bug Reports': 'https://github.com/joniumGit/dnsmule',

@@ -114,21 +114,10 @@ async def print_progress(progress: float):
     print(f'===> {progress:.2f}%', end='\r')
 
 
-def main(file: str, rule_file: str, limit: int, count: int, skip_dump: bool, all_domains: bool, ptr: bool = False):
+def main(file: str, rule_file: str, limit: int, count: int, skip_dump: bool, all_domains: bool):
     get_logger().setLevel(logging.INFO)
     get_logger().addHandler(logging.StreamHandler())
     mule = DNSMule.load(rule_file)
-    if ptr:
-        from dnsmule_plugins.ptrscan import plugin_ptr_scan
-        from dnsmule.rules.utils import load_rules
-        plugin_ptr_scan(mule.rules, mule.get_backend())
-        load_rules([
-            {
-                'record': 'A',
-                'type': 'ip.ptr',
-                'name': 'ptrscan',
-            },
-        ], rules=mule.rules)
 
     print('Starting for', file, 'limiting to', limit, 'entries using DNS server ', defaults.DEFAULT_RESOLVER)
     data = load_data(file, limit=limit)

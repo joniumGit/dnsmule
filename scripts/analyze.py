@@ -1,12 +1,91 @@
 import json
 import logging
+from collections import defaultdict
+from os import cpu_count
+from typing import Callable, Coroutine, Iterable, Any, TypeVar, Dict, List
 
-from dnsmule.backends.dnspython import add_ptr_scan
+from dnsmule import DNSMule
 from dnsmule.config import defaults, get_logger
-from dnsmule.definitions import RRType
-from dnsmule.rules import load_config
+from dnsmule.definitions import Result, Domain, RRType
+from dnsmule.utils import DomainGroup
 from dnsmule.utils import group_domains_filtered_by, generate_most_common_subdomains, load_data
-from utils.interactive_utils import rules_interactive
+from dnsmule.utils.async_utils import BoundedWorkQueue, ProgressReportingBoundedWorkQueue
+
+T = TypeVar('T')
+
+
+def map_interactive(
+        work: Iterable[Coroutine[Any, Any, T]],
+        bound: int,
+        listener: Callable[[float], Coroutine[Any, Any, Any]] = None,
+):
+    """Use asyncio to map coroutines using a bounded queue
+
+    note: This is not usable inside already async programs.
+
+    note: This will catch a KeyboardInterrupt as the work cancellation call and will not propagate it
+    """
+    from asyncio import new_event_loop
+
+    if listener is None:
+        queue = BoundedWorkQueue(work, bound)
+    else:
+        queue = ProgressReportingBoundedWorkQueue(work, bound, listener=listener)
+
+    loop = new_event_loop()
+    try:
+        result = loop.run_until_complete(queue.complete())
+    except KeyboardInterrupt:
+        loop.run_until_complete(queue.cancel())
+        loop.run_until_complete(loop.shutdown_asyncgens())
+        result = [*queue.results]
+    finally:
+        loop.close()
+
+    return result
+
+
+def rules_interactive(
+        domains: DomainGroup,
+        mule: DNSMule,
+        listener: Callable[[float], Coroutine[Any, Any, Any]] = None,
+        all_domains: bool = False,
+) -> Dict[RRType, List[Result]]:
+    """Runs through a rule set with a bounded queue
+    """
+
+    def generate_domains():
+        if all_domains:
+            for domain, subs in domains.items():
+                for sb in subs:
+                    yield sb
+        else:
+            yield from domains.keys()
+
+    async def run_rules(domain: str) -> Dict[RRType, Result]:
+        results = defaultdict(list)
+        async for result in mule.get_backend().run_single(mule.rules, Domain(domain)):
+            results[next(iter(result.type))].append(result)
+        return {
+            k: sum(v[1:], start=v[0]) if len(v) != 1 else v[0]
+            for k, v in results.items()
+        }
+
+    work = iter(
+        run_rules(domain)
+        for domain in generate_domains()
+    )
+
+    data = map_interactive(work, bound=cpu_count(), listener=listener)
+    reduced = {}
+
+    for entry in data:
+        for key, value in entry.items():
+            if key not in reduced:
+                reduced[key] = []
+            reduced[key].append(value)
+
+    return reduced
 
 
 def sorted_tags(results, rtype):
@@ -38,9 +117,18 @@ async def print_progress(progress: float):
 def main(file: str, rule_file: str, limit: int, count: int, skip_dump: bool, all_domains: bool, ptr: bool = False):
     get_logger().setLevel(logging.INFO)
     get_logger().addHandler(logging.StreamHandler())
-    rules = load_config(rule_file)
+    mule = DNSMule.load(rule_file)
     if ptr:
-        add_ptr_scan(rules)
+        from dnsmule_plugins.ptrscan import plugin_ptr_scan
+        from dnsmule.rules.utils import load_rules
+        plugin_ptr_scan(mule.rules, mule.get_backend())
+        load_rules([
+            {
+                'record': 'A',
+                'type': 'ip.ptr',
+                'name': 'ptrscan',
+            },
+        ], rules=mule.rules)
 
     print('Starting for', file, 'limiting to', limit, 'entries using DNS server ', defaults.DEFAULT_RESOLVER)
     data = load_data(file, limit=limit)
@@ -51,7 +139,7 @@ def main(file: str, rule_file: str, limit: int, count: int, skip_dump: bool, all
         print(f'{count: >8d} {subdomain}')
 
     print('Fetching dns records, this will take a while...')
-    results = rules_interactive(fi_domains, rules, listener=print_progress, all_domains=all_domains)
+    results = rules_interactive(fi_domains, mule, listener=print_progress, all_domains=all_domains)
     print()
 
     print('Most common services from TXT records')

@@ -2,7 +2,7 @@ version: '0.0.1'
 backend:
   name: 'dnspython.DNSPythonBackend'
   config:
-    resolver: '8.8.8.8'
+    #    resolver: '8.8.8.8'
     timeout: 2
 rules:
   - o365:

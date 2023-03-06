@@ -1,4 +1,4 @@
-from dnsmule_plugins.ranges import *
+from dnsmule_plugins.ipranges.ranges import *
 
 
 async def debug_ip_ranges():

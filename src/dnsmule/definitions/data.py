@@ -52,3 +52,12 @@ class Data:
     @classmethod
     def register_adapter(cls, f: Callable[['Data', str], Any]):
         cls._adapters.append(f)
+
+    def __getitem__(self, item):
+        return self.data[item]
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
+    def __contains__(self, item):
+        return item in self.data

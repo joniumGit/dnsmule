@@ -135,3 +135,10 @@ def test_data_instance_has_no_adapters():
 
     assert not d._adapters, 'Adapters were not empty for instance'
     assert d._adapters is not Data._adapters, 'Adapters for instance were Class adapters'
+
+
+def test_data_getitem_contains_setitem():
+    data = Data(RRType.A, value='data')
+    data['a'] = 'abcd'
+    assert 'a' in data, 'Failed contains'
+    assert data['a'] == 'abcd', 'Failed item get'

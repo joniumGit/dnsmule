@@ -39,6 +39,15 @@ class Record:
     def __eq__(self, other: 'Record'):
         return isinstance(other, Record) and other.domain == self.domain and other.type == self.type
 
+    def __getitem__(self, item):
+        return self.data[item]
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
+    def __contains__(self, item):
+        return item in self.data
+
 
 __all__ = [
     'Record',

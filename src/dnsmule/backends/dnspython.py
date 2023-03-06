@@ -1,16 +1,16 @@
-from typing import Union, Dict, AsyncGenerator, Any, Callable, Coroutine
+from typing import Union, Dict, AsyncGenerator, Any, Callable, Coroutine, Generator
 
 from dns.asyncquery import udp_with_fallback, https, quic, udp, tcp, tls
 from dns.exception import Timeout
 from dns.message import Message, make_query
 from dns.name import Name
 from dns.rdata import Rdata
-from dns.rdatatype import RdataType, is_metatype
+from dns.rdatatype import RdataType
 from dns.rrset import RRset
 
 from .abstract import Backend
 from ..config import get_logger, defaults
-from ..definitions import Record, Result, RRType, Data, Domain
+from ..definitions import Record, RRType, Data, Domain
 
 _Querier = Callable[..., Coroutine[Any, Any, Message]]
 
@@ -37,8 +37,8 @@ class DNSPythonBackend(Backend):
     resolver: str = defaults.DEFAULT_RESOLVER
     _querier: _Querier
 
-    def __init__(self, rules, **kwargs):
-        super().__init__(rules, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         try:
             self._querier = DNSPythonBackend._MODE_MAPPING[self.querier]
         except KeyError:
@@ -52,20 +52,19 @@ class DNSPythonBackend(Backend):
     ) -> AsyncGenerator[Any, Message]:
         for dns_type in types:
             dns_type = RdataType.make(dns_type)
-            if not is_metatype(dns_type):
-                query = make_query(host, dns_type)
-                get_logger().debug('%s\n%s', 'Starting query', query)
-                try:
-                    response = await self._querier(query, self.resolver, timeout=self.timeout)
-                    yield response
-                except Timeout:
-                    get_logger().error('%s\n%s', 'Timed out query', query)
+            query = make_query(host, dns_type)
+            get_logger().debug('%s\n%s', 'Starting query', query)
+            try:
+                response = await self._querier(query, self.resolver, timeout=self.timeout)
+                yield response
+            except Timeout:
+                get_logger().error('%s\n%s', 'Timed out query', query)
 
     @staticmethod
     def _process_message(
             domain: Domain,
             message: Message,
-    ) -> Dict[RRType, Result]:
+    ) -> Generator[Record, Any, Any]:
         """Processes a dns message
         """
         result_set: RRset

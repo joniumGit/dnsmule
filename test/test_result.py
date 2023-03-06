@@ -128,3 +128,16 @@ def test_result_to_dict():
 def test_result_empty_type():
     r = Result(Domain('a'))
     assert r.type == set(), 'Result created with default type'
+
+
+def test_result_empty_len():
+    r = Result(Domain('a'))
+    assert len(r) == 0, 'Result had a length'
+
+
+def test_result_len_iter():
+    r = Result(Domain('a'))
+    r.tags.add('a')
+    r.tags.add('b')
+    assert len(r) == 2, 'Result did not have a  length'
+    assert {*r} == {'a', 'b'}, 'Result did not have tags from iter'

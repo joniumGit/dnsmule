@@ -51,6 +51,12 @@ class Result:
     def __eq__(self, other: 'Result'):
         return isinstance(other, Result) and other.domain == self.domain or other == self.domain
 
+    def __len__(self):
+        return len(self.tags)
+
+    def __iter__(self):
+        return iter(self.tags)
+
     def to_json(self):
         return {
             'domain': self.domain.name,

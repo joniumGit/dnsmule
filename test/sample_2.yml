@@ -1,0 +1,6 @@
+version: '1.0.0'
+rules:
+  - regex_test:
+    record: 'TXT'
+    type: 'dns.regex'
+    pattern: 'a'

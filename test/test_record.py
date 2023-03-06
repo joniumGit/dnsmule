@@ -51,3 +51,10 @@ def test_record_identify():
     r = Record(domain='example.com', type=RRType.A, data='data')
     res = r.identify('a')
     assert next(iter(res.tags)) == 'a'
+
+
+def test_record_getitem_contains_setitem():
+    r = Record(domain='example.com', type=RRType.A, data='data')
+    r['a'] = 'abcd'
+    assert 'a' in r, 'Failed contains'
+    assert r['a'] == 'abcd', 'Failed item get'

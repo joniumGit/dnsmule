@@ -6,7 +6,7 @@ here = Path(__file__).parent.resolve()
 long_description = (here / 'README.md').read_text(encoding='utf-8')
 
 setup(
-    name='dnsmule_ipranges',
+    name='dnsmule_plugins',
     version='0.0.1',
     description='Cloud Provider IPRanges Plugin for DNSMule',
     long_description=long_description,

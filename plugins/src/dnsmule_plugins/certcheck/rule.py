@@ -1,15 +1,16 @@
 from typing import Callable, Collection, List
 
 from dnsmule.definitions import Record
-from dnsmule.rules import Rules, Rule
+from dnsmule.rules import Rule
 from dnsmule.utils import process_domains
 from . import certificates
 
 
 class CertChecker(Rule):
-    ports: List[int]
-    timeout: float
-    stdlib: bool
+    ports: List[int] = [443, 8443]
+    timeout: float = 1
+    stdlib: bool = False
+    callback: bool = False
     _callback: Callable[[Collection[str]], None]
 
     @staticmethod
@@ -34,20 +35,27 @@ class CertChecker(Rule):
             )
             if cert:
                 certs.append(cert)
-        domains = []
+        domains = set()
+        issuers = set()
         for cert in certs:
-            domains.extend(certificates.resolve_domain_from_certificate(cert))
+            issuers.add(cert.issuer)
+            domains.update(certificates.resolve_domain_from_certificate(cert))
         domains = process_domains(*domains)
         result = record.result()
-        result.data['resolvedDomains'] = domains
-        self._callback(domains)
+        if 'resolvedDomains' not in result.data:
+            result.data['resolvedDomains'] = {*domains}
+            result.data['resolvedIssuers'] = {*issuers}
+        else:
+            result.data['resolvedDomains'].update(domains)
+            result.data['resolvedIssuers'].update(issuers)
+        for issuer in issuers:
+            if issuer not in record.domain.name:
+                result.tags.add(f'IP::CERTS::{self.name.upper()}::ISSUER::{issuer.upper()}')
+        if self.callback:
+            self._callback(domains)
         return result
 
 
-def add_cert_checker(rules: Rules, datasource_callback: Callable[[Collection[str]], None]):
-    rules.register('ip.certs')(CertChecker.creator(datasource_callback))
-
-
 __all__ = [
-    'add_cert_checker',
+    'CertChecker',
 ]

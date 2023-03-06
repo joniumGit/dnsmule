@@ -15,6 +15,15 @@ properties:
   version:
     type: string
     pattern: ^\d+(?:\.\d+){0,2}$
+  backend:
+    type: object
+    properties:
+      name:
+        type: string
+        pattern: '^\w+\.\w+$'
+      config:
+        type: object
+        additionalProperties: true
   rules:
     $ref: '#/definitions/rules'
 definitions:

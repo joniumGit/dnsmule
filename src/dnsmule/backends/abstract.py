@@ -6,10 +6,15 @@ from ..rules import Rules
 
 
 class Backend(ABC):
-    rules: Rules
+    _rules: Rules
 
-    def __init__(self, rules: Rules):
-        self.rules = rules
+    def __init__(self, rules: Rules, **kwargs):
+        self.__dict__.update({
+            k: v
+            for k, v in kwargs.items()
+            if not k.startswith('_')
+        })
+        self._rules = rules
 
     async def run(self, targets: Iterable[Domain]) -> AsyncGenerator[Result, Any]:
         for target in targets:
@@ -17,9 +22,9 @@ class Backend(ABC):
                 yield result
 
     async def run_single(self, target: Domain) -> AsyncGenerator[Result, Any]:
-        types = self.rules.get_types()
+        types = self._rules.get_types()
         async for record in self.process(target, *types):
-            yield await self.rules.process_record(record)
+            yield await self._rules.process_record(record)
 
     @abstractmethod
     def process(self, target: Domain, *types: RRType) -> AsyncGenerator[Record, Any]:

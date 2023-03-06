@@ -1,4 +1,4 @@
-from typing import List, Dict, Collection, Iterable, Any
+from typing import Set, Dict, Collection, Iterable, Any
 
 DomainGroup = Dict[str, Collection[str]]
 
@@ -53,7 +53,7 @@ def lmerge(a: Dict[str, Any], b: Dict[str, Any]):
             a[k] += b[k]
 
 
-def process_domains(*domains: str) -> List[str]:
+def process_domains(*domains: str) -> Set[str]:
     """De-duplicates and removes star domains from the input and creates all valid super domains
     
     *.a.b.c will have the * removed and ['a.b.c', 'b.c'] will be returned.
@@ -62,7 +62,7 @@ def process_domains(*domains: str) -> List[str]:
     >>> {*process_domains(*domain_data)} == {'b.c', 'a.b.c'} # Order is not guaranteed!
     True
     """
-    return [*{*(d.lstrip('*.') for d in domains), *('.'.join(d.split('.')[-2:]) for d in domains)}]
+    return {*(d.lstrip('*.') for d in domains), *('.'.join(d.split('.')[-2:]) for d in domains)}
 
 
 def group_domains_filtered_by(suffix: str, data: Iterable[str]) -> DomainGroup:

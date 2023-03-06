@@ -29,7 +29,8 @@ def load_rules(config: List[Dict[str, Any]], rules: Rules = None) -> Rules:
         name = next(iter(rule_definition.keys()))
         if 'name' not in rule_definition:
             rule_definition['name'] = name
-        rule_definition.pop(name)
+        if rule_definition[name] is None:
+            rule_definition.pop(name)
         load_and_append_rule(rules, rule_definition)
     return rules
 

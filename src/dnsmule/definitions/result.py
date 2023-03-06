@@ -14,8 +14,10 @@ class Result:
     data: Dict
 
     # noinspection PyShadowingBuiltins
-    def __init__(self, type: RRType, domain: Domain):
-        self.type = {type}
+    def __init__(self, domain: Domain, type: RRType = None):
+        self.type = set()
+        if type:
+            self.type.add(type)
         self.domain = domain
         self.tags = set()
         self.data = {}

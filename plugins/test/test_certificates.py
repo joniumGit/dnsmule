@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from dnsmule_ipranges import certificates
+from dnsmule_plugins.certcheck import certificates
 
 
 @pytest.mark.parametrize('cert,result', [

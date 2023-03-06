@@ -3,7 +3,7 @@ import datetime
 from typing import List, Optional, Dict
 
 from dnsmule.definitions import Record, Result
-from dnsmule.rules import Rules, DynamicRule
+from dnsmule.rules import DynamicRule
 from . import ranges
 
 
@@ -22,7 +22,7 @@ class IpRangeChecker(DynamicRule):
         self.providers = [*{*self.providers}] if self.providers else []
         self.provider_ranges = {}
 
-    def update_fetched(self):
+    def update_fetched(self, *_, **__):
         self.last_fetch = datetime.datetime.now()
         del self._task
 
@@ -63,14 +63,10 @@ class IpRangeChecker(DynamicRule):
         for provider, p_ranges in self.provider_ranges.items():
             for p_range in p_ranges:
                 if address in p_range:
-                    result.tags.add(f'IP::RANGES::{p_range.service}')
+                    result.tags.add(f'IP::RANGES::{self.name.upper()}::{p_range.service}')
         return result
 
 
-def add_ip_range_checker(rules: Rules):
-    rules.register('ip.ranges')(IpRangeChecker)
-
-
 __all__ = [
-    'add_ip_range_checker',
+    'IpRangeChecker',
 ]

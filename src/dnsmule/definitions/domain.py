@@ -1,12 +1,14 @@
 from typing import Dict, Any, Union
 
+from ..utils import Comparable
 
-class Domain:
+
+class Domain(metaclass=Comparable, key='name'):
     name: str
     data: Dict[str, Any]
 
     def __init__(self, name: str, **kwargs):
-        self.name = name
+        self.name = str(name)
         self.data = {**kwargs}
 
     def __hash__(self):

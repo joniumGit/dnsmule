@@ -45,3 +45,11 @@ def test_domain_equals_and_hash_with_str():
 ])
 def test_domain_subdomain_functionality(a, b, r):
     assert Domain(a).is_subdomain(b) == r, 'Unexpected subdomain result'
+
+
+def test_domain_is_comparable():
+    assert list(sorted([Domain('c'), Domain('x'), Domain('a')])) == ['a', 'c', 'x'], 'Unexpected sort order'
+
+
+def test_domain_from_domain():
+    assert Domain(Domain('a')).name == 'a', 'Retained wrapping'

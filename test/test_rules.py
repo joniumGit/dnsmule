@@ -33,11 +33,11 @@ def test_rules_rule_unknown_type(rules):
     assert "name='unknown_type'" in str(rules[unknown].pop())
 
 
-def test_rules_iter_returns_items_from_rules(rules):
+def test_rules_iter_returns_keys_from_rules(rules):
     marker = object()
     rules._rules[RRType.TXT] = marker
 
-    assert next(iter(rules)) == (RRType.TXT, marker), 'Did not return the expected iteration result'
+    assert next(iter(rules)) == RRType.TXT, 'Did not return the expected iteration result'
 
 
 def test_rules_getitem_returns_items_from_rules(rules):
@@ -45,6 +45,22 @@ def test_rules_getitem_returns_items_from_rules(rules):
     rules._rules[RRType.TXT] = marker
 
     assert rules[RRType.TXT] is marker, 'Did not return from rules'
+
+
+def test_rules_length_returns_from_rules_values(rules):
+    marker = object()
+    rules._rules[RRType.TXT] = [marker, marker, marker]
+    rules._rules[RRType.A] = [marker, marker, marker]
+
+    assert len(rules) == 2, 'Did not return rule key count'
+
+
+def test_rules_count_length_returns_from_rules_values(rules):
+    marker = object()
+    rules._rules[RRType.TXT] = [marker, marker, marker]
+    rules._rules[RRType.A] = [marker, marker, marker]
+
+    assert rules.rule_count() == 6, 'Did not return rule count'
 
 
 def test_rules_getitem_returns_items_from_rules_conversion(rules):

@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict, Union, List
+from typing import Dict, Union, List, Mapping
 
 from .entities import Rule, RuleCreator
 from .factories import RuleFactoryMixIn
@@ -7,10 +7,10 @@ from ..config import get_logger
 from ..definitions import Record, Result, RRType
 
 
-class Rules(RuleFactoryMixIn):
+class Rules(Mapping[Union[int, RRType], List[Rule]], RuleFactoryMixIn):
     """Class for storing rules
     """
-    _rules: Dict[RRType, List[Rule]]
+    _rules: Dict[Union[int, RRType], List[Rule]]
 
     def __init__(self):
         super().__init__()
@@ -43,7 +43,13 @@ class Rules(RuleFactoryMixIn):
         return self._rules[RRType.from_any(item)]
 
     def __iter__(self):
-        yield from self._rules.items()
+        yield from iter(self._rules)
+
+    def __len__(self) -> int:
+        return len(self._rules)
+
+    def rule_count(self):
+        return sum(len(c) for c in self._rules.values())
 
 
 __all__ = [

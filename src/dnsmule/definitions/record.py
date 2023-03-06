@@ -25,7 +25,7 @@ class Record:
 
     def result(self):
         if self._result is None:
-            self._result = Result(self.type, self.domain)
+            self._result = Result(self.domain, self.type)
         return self._result
 
     def identify(self, identification: str):

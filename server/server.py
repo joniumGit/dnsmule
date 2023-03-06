@@ -1,22 +1,69 @@
+from logging import INFO, StreamHandler
 from pathlib import Path
-from threading import Lock
 from typing import Union, Dict, Any
 
-from fastapi import FastAPI, Query, BackgroundTasks
+from fastapi import FastAPI, Query, BackgroundTasks, Depends
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
-from dnsmule.backends.dnspython import DNSPythonBackend
-from dnsmule.definitions import Domain, Result, RRType
-from dnsmule.rules import load_config
+from dnsmule import DNSMule, RRType
 
 app = FastAPI(default_response_class=Response)
-rules = load_config(Path(__file__).parent.parent / 'rules' / 'rules.yml')
-results: Dict[Union[str, Domain], Result] = {}
-backend = DNSPythonBackend(rules)
 
-results_lock = Lock()
-rules_lock = Lock()
+
+def get_mule() -> DNSMule:
+    return app.state.mule
+
+
+@app.on_event('startup')
+def startup():
+    from dnsmule.config import get_logger
+
+    get_logger().addHandler(StreamHandler())
+    get_logger().setLevel(INFO)
+
+    mule = DNSMule(file=Path(__file__).parent.parent / 'rules' / 'rules.yml')
+
+    try:
+        from dnsmule.rules.utils import load_rules
+        from dnsmule_plugins import certcheck, ipranges
+
+        certcheck.plugin_certcheck(mule.rules, lambda ds: mule.store_domains(ds))
+        ipranges.plugin_ipranges(mule.rules)
+
+        load_rules([
+            {
+                'record': 'A',
+                'type': 'ip.certs',
+                'name': 'certcheck',
+            },
+            {
+                'record': 'A',
+                'type': 'ip.ranges',
+                'name': 'ipranges',
+                'providers': [
+                    'amazon',
+                    'microsoft',
+                    'google',
+                ]
+            },
+        ], rules=mule.rules)
+
+        if mule.backend == 'DNSPythonBackend':
+            from dnsmule_plugins import ptrscan
+
+            ptrscan.plugin_ptr_scan(mule.rules, mule.get_backend())
+            load_rules([
+                {
+                    'record': 'A',
+                    'type': 'ip.ptr',
+                    'name': 'ptrscan',
+                },
+            ], rules=mule.rules)
+    except ImportError:
+        pass
+
+    app.state.mule = mule
 
 
 def domain_query(default=...):
@@ -35,77 +82,72 @@ class RuleDefinition(BaseModel):
     config: Dict[str, Any]
 
 
-async def scan_task(domain: str):
-    async for result in backend.run_single(Domain(domain)):
-        with results_lock:
-            if result.domain in results:
-                results[result.domain] += result
-            else:
-                results[result.domain] = result
-
-
 @app.post('/scan', status_code=202)
-async def scan_domain(tasks: BackgroundTasks, domain: str = domain_query()):
-    tasks.add_task(scan_task, domain)
+async def scan_domain(tasks: BackgroundTasks, domain: str = domain_query(), mule: DNSMule = Depends(get_mule)):
+    tasks.add_task(mule.run, domain)
 
 
 @app.get('/results', response_class=JSONResponse, status_code=200)
-def get_domain(domain: str = domain_query(None)):
+def get_domain(domain: str = domain_query(None), mule: DNSMule = Depends(get_mule)):
     if domain:
-        if domain in results:
-            return results[domain].to_json()
+        if domain in mule:
+            return mule[domain].to_json()
         else:
             return Response(status_code=404)
     else:
         return {
             'results': [
                 result.to_json()
-                for result in results.values()
+                for result in mule.values()
             ]
         }
 
 
 @app.get('/rules', response_class=JSONResponse, status_code=200)
-def get_rules():
+def get_rules(mule: DNSMule = Depends(get_mule)):
     return {
         RRType.to_text(record): [
             rule.name
             for rule in collection
         ]
-        for record, collection in rules
+        for record, collection in mule.rules.items()
     }
 
 
 @app.post('/rules', status_code=201)
-def create_rule(definition: RuleDefinition):
-    with rules_lock:
-        definition.config['name'] = definition.name
-        definition.config['type'] = definition.type
-        rule = rules.create_rule(definition.config)
-        rules.add_rule(definition.record, rule)
+def create_rule(definition: RuleDefinition, mule: DNSMule = Depends(get_mule)):
+    definition.config['name'] = definition.name
+    definition.config['type'] = definition.type
+
+    rule = mule.rules.create_rule(definition.config)
+    mule.rules.add_rule(definition.record, rule)
 
 
 @app.delete('/rules', status_code=204)
-def delete_rule(record: str = Query(None), name: str = Query(...)):
-    with rules_lock:
-        for rtype, collection in rules:
-            if not record or rtype == RRType.from_any(record):
-                to_remove = []
-                for item in collection:
-                    if item.name == name:
-                        to_remove.append(item)
-                for item in to_remove:
-                    collection.remove(item)
+def delete_rule(record: Union[int, str] = Query(None), name: str = Query(...), mule: DNSMule = Depends(get_mule)):
+    for rtype, collection in mule.rules:
+        if not record or rtype == RRType.from_any(record):
+            to_remove = []
+            for item in collection:
+                if item.name == name:
+                    to_remove.append(item)
+            for item in to_remove:
+                collection.remove(item)
 
 
 @app.post('/rescan', status_code=202)
-def rescan(tasks: BackgroundTasks, response: Response):
-    response.headers['scan-count'] = str(len(results))
-    for domain in results.keys():
-        tasks.add_task(scan_task, domain.name)
+def rescan(tasks: BackgroundTasks, response: Response, mule: DNSMule = Depends(get_mule)):
+    domains = mule.domains()
+    response.headers['scan-count'] = str(len(domains))
+    for domain in domains:
+        tasks.add_task(mule.run, domain)
 
 
 if __name__ == '__main__':
     import uvicorn
 
-    uvicorn.run(app)
+    uvicorn.run(
+        'server:app',
+        reload_dirs=str(Path(__file__).parent),
+        reload=True,
+    )

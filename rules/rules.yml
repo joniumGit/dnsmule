@@ -1,4 +1,9 @@
 version: '0.0.1'
+backend:
+  name: 'dnspython.DNSPythonBackend'
+  config:
+    resolver: '8.8.8.8'
+    timeout: 2
 rules:
   - o365:
     type: dns.regex
@@ -45,7 +50,7 @@ rules:
                   key = data.partition('=')[0]
                   if key in seen:
                       return
-                  seen.add(key)            
+                  seen.add(key)
               get_logger().info(f'Found a verify record: %s', data)
 
   - cname_providers:

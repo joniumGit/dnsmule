@@ -102,6 +102,18 @@ def test_rules_utils_takes_existing_name(replace_method):
     assert definition['name'] == 'b', 'Modified existing name'
 
 
+def test_rules_utils_pops_only_none(replace_method):
+    definition = {
+        'a': 'some value'
+    }
+    replace_method(utils, 'load_and_append_rule', lambda *_, **__: None)
+    utils.load_rules([definition])
+
+    assert len(definition) == 2, 'Actually removed not-none key'
+    assert definition['name'] == 'a', 'Failed to modify key to name'
+    assert definition['a'] == 'some value', 'Did not preserve key'
+
+
 def test_loading_empty_rules():
     assert utils.load_config(Path(__file__).parent / 'sample_1.yml') is not None, 'Failed to create rules'
 

@@ -123,3 +123,8 @@ def test_result_to_dict():
             'test2': {1}
         }
     }
+
+
+def test_result_empty_type():
+    r = Result(Domain('a'))
+    assert r.type == set(), 'Result created with default type'

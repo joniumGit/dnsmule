@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from ipaddress import IPv4Network, IPv6Network, IPv4Address, IPv6Address
+from ipaddress import IPv4Network, IPv6Network, IPv4Address, IPv6Address, AddressValueError
 from typing import Set, Union, List
 
 from httpx import AsyncClient
@@ -14,12 +14,15 @@ class IPvXRange:
     service: str
 
     def __contains__(self, item: Union[str, IPv4Address, IPv6Address]):
-        if isinstance(item, str):
-            if isinstance(self.address, IPv4Network):
-                item = IPv4Address(item)
-            else:
-                item = IPv6Address(item)
-        return item in self.address
+        try:
+            if isinstance(item, str):
+                if ':' not in item:
+                    item = IPv4Address(item)
+                else:
+                    item = IPv6Address(item)
+            return item in self.address
+        except AddressValueError:
+            return False
 
 
 async def fetch_google_ip_ranges_goog() -> Set[IPv4Network]:

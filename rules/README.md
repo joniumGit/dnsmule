@@ -8,6 +8,22 @@ registering handlers or rules programmatically.
 
 Rules support registration per DNS record type and priority for controlling invocation order.
 
+```yaml
+version: '0.0.1'
+rules:
+  - o365:
+    priority: 10
+    type: dns.regex
+    record: txt
+    pattern: '^MS=ms'
+    identification: MICROSOFT::O365
+  - ses:
+    type: dns.regex
+    record: txt
+    pattern: '^amazonses:'
+    identification: AMAZON::SES
+```
+
 #### Example
 
 ```python

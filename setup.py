@@ -4,6 +4,7 @@ from setuptools import setup, find_packages
 
 here = Path(__file__).parent.resolve()
 readme = (here / 'README.md').read_text(encoding='utf-8')
+readme += '\n\n' + (here / 'rules' / 'README.md').read_text(encoding='utf-8')
 repo = 'https://github.com/joniumGit/dnsmule'
 version = (here / 'src' / 'dnsmule' / '__init__.py').read_text(encoding='utf-8')
 version = version.strip().splitlines(keepends=False).pop().split('=')[1].strip(" '")

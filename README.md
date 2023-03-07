@@ -1,47 +1,39 @@
 # DNSMule
 
-#### Analyze domains from DNS:
+Package for rule based dependency scanning and service fingerprinting via DNS.
 
-This is the only analysis script at the moment for example usage.
+This package provides utilities for writing and evaluating verbose and easy to read rule definitions in _YAML_-format.
+There are two builtin rule formats with more available as plugins.
 
-> python scripts/analyze.py -h
+#### Current State
 
-```
-usage: analyze.py [-h] [--sub-domain-count SDC] --limit LIMIT [--skip-dump] FILE RULES
+States (Complete, Testing, Developing, Refining) for every feature planned at this moment.
 
-positional arguments:
-  FILE RULES
+- Backends (Complete)
+    - DNSPythonBackend
+    - YAML definition
+- Rules (Testing)
+    - Builtin types
+    - Custom rules
+    - Custom rule factories
+    - YAML definition (Complete)
+- Plugins (Developing)
+    - Registration in program (Developing)
+    - Registration in YAML (Refining)
+    - YAML definition (Refining)
+- DNSMule (Developing)
+    - Rules from YAML (Complete)
+    - Backend from YAML (Complete)
+    - Processing and gathering results (Testing)
+    - Plugins from YAML (Refining)
+    - Result storage (Refining)
+    - Combined YAML definition (Refining)
 
-options:
-  -h, --help                        (Help)
-  --sub-domain-count SDC, -sdc SDC  (Shows common subdomains greater than this)
-  --limit LIMIT, -n LIMIT           (Limit to n first records)
-  --skip-dump                       (Skips interactive prompt for dumping records)
-  --all                             (Doesn't limit analyzing to subdomains)
-```
+#### Notice
 
-> python scripts/analyze.py -sdc 10 -n -1 --all --skip-dump umbrella-top-1m.csv rules/rules.yml
+This package is under active development.
 
-#### Rules
+#### Additional
 
-Check the rule docs in [rules](rules)
-
-#### server
-
-A very simple server example is in [server,py](server/server.py)
-
-The server allows adding, viewing, and deleting rules.
-It is possible to run scans for domains and rescan all domains with results.
-There is no data persistence except for memory at the moment.
-
-__Security Note:__ The server allows adding dynamic rules, so don't run it public.
-
-Example commands:
-
-```shell
-$ curl -X DELETE http://localhost:8000/rules\?record=txt\&name=ses
-$ curl -s http://localhost:8000/rules | python -m json.tool
-$ curl -X POST http://localhost:8000/scan\?domain=ouspg.org
-$ curl -s http://localhost:8000/results\?domain=ouspg.org | python -m json.tool
-```
-
+- RnD Scripts under [scripts](scripts)
+- Example server under [server](server) 

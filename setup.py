@@ -15,9 +15,11 @@ setup(
     version=version,
     url=repo,
     long_description=readme,
+    license='MIT',
     description='Rule based dependency scanning and service fingerprinting via DNS',
     long_description_content_type='text/markdown',
     author='joniumGit',
+    author_email='52005121+joniumGit@users.noreply.github.com',
     classifiers=[
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3',

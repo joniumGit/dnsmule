@@ -15,6 +15,15 @@ class Certificate:
     valid_until: datetime.datetime
     valid_from: datetime.datetime
 
+    def to_json(self):
+        from dataclasses import asdict
+        data = asdict(self)
+        return {
+            'valid_until': data.pop('valid_until').isoformat(),
+            'valid_from': data.pop('valid_from').isoformat(),
+            **data,
+        }
+
 
 def collect_certificate_cryptography(host: str, port: int, timeout: float):
     import ssl

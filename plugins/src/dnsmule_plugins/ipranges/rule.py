@@ -9,21 +9,20 @@ from . import ranges
 
 class IpRangeChecker(DynamicRule):
     providers: List[str]
-    provider_ranges: Dict[str, List[ranges.IPvXRange]]
-    last_fetch: Optional[datetime.datetime] = None
+
+    _last_fetch: Optional[datetime.datetime] = None
+    _provider_ranges: Dict[str, List[ranges.IPvXRange]]
     _task: asyncio.Task
 
     def __init__(self, **kwargs):
         kwargs['code'] = 'pass'
         super().__init__(**kwargs)
-        self.globals = {
-            'init': self.fetch_ranges
-        }
-        self.providers = [*{*self.providers}] if self.providers else []
-        self.provider_ranges = {}
+        self.globals = {}
+        self.providers = [*{*self.providers}] if hasattr(self, 'providers') else []
+        self._provider_ranges = {}
 
     def update_fetched(self, *_, **__):
-        self.last_fetch = datetime.datetime.now()
+        self._last_fetch = datetime.datetime.now()
         del self._task
 
     def start_fetching(self):
@@ -34,8 +33,9 @@ class IpRangeChecker(DynamicRule):
         self.start_fetching()
 
     async def fetch_provider(self, provider: str):
-        if provider not in self.provider_ranges:
-            self.provider_ranges[provider] = await asyncio.create_task(getattr(ranges, f'fetch_{provider}_ip_ranges')())
+        if provider not in self._provider_ranges:
+            self._provider_ranges[provider] = await asyncio.create_task(
+                getattr(ranges, f'fetch_{provider}_ip_ranges')())
 
     async def fetch_ranges(self):
         tasks = []
@@ -55,8 +55,8 @@ class IpRangeChecker(DynamicRule):
     async def check_fetch(self):
         if hasattr(self, '_task'):
             await self._task
-        elif not self.last_fetch or abs(datetime.datetime.now() - self.last_fetch) > datetime.timedelta(hours=1):
-            self.provider_ranges.clear()
+        elif not self._last_fetch or abs(datetime.datetime.now() - self._last_fetch) > datetime.timedelta(hours=1):
+            self._provider_ranges.clear()
             self.start_fetching()
             await self._task
 
@@ -64,10 +64,15 @@ class IpRangeChecker(DynamicRule):
         await self.check_fetch()
         result = record.result()
         address: str = record.data.to_text()
-        for provider, p_ranges in self.provider_ranges.items():
+        for provider, p_ranges in self._provider_ranges.items():
             for p_range in p_ranges:
                 if address in p_range:
-                    result.tags.add(f'IP::RANGES::{self.name.upper()}::{p_range.service}')
+                    result.tags.add(
+                        f'IP::RANGES'
+                        f'::{self.name.upper()}'
+                        f'::{p_range.service.upper()}'
+                        f'::{p_range.region.upper()}'
+                    )
         return result
 
 

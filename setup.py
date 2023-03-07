@@ -3,29 +3,40 @@ from pathlib import Path
 from setuptools import setup, find_packages
 
 here = Path(__file__).parent.resolve()
-long_description = (here / 'README.md').read_text(encoding='utf-8')
+readme = (here / 'README.md').read_text(encoding='utf-8')
+repo = 'https://github.com/joniumGit/dnsmule'
+version = (here / 'src' / 'dnsmule' / '__init__.py').read_text(encoding='utf-8')
+version = version.strip().splitlines(keepends=False).pop().split('=')[1].strip(" '")
 
+# https://pypi.org/classifiers/
 setup(
     name='dnsmule',
-    version='0.0.1',
-    description='DNS Based Dependency Detection',
-    long_description=long_description,
+    version=version,
+    url=repo,
+    long_description=readme,
+    description='Rule based dependency scanning and service fingerprinting via DNS',
     long_description_content_type='text/markdown',
-    url='https://github.com/joniumGit/dnsmule',
     author='joniumGit',
-    # https://pypi.org/classifiers/
     classifiers=[
-        'Development Status :: 1 - Planning',
-        'Intended Audience :: Developers',
-        'Intended Audience :: Science/Research',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3',
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: Science/Research',
+        'Intended Audience :: Developers',
         'Topic :: Internet',
     ],
-    keywords='DNS, Dependency',
-    package_dir={'': 'src'},
-    packages=find_packages(where='src', include=('dnsmule', 'dnsmule.*')),
-    python_requires='>=3',
+    keywords='DNS, Dependency, DNSMule',
+    package_dir={
+        '': 'src',
+    },
+    packages=find_packages(
+        where='src',
+        include=(
+            'dnsmule',
+            'dnsmule.*',
+        )
+    ),
+    python_requires='>=3.7',
     install_requires=[
         'dnspython',
         'pyyaml',
@@ -37,7 +48,7 @@ setup(
         ]
     },
     project_urls={
-        'Bug Reports': 'https://github.com/joniumGit/dnsmule',
-        'Source': 'https://github.com/joniumGit/dnsmule',
+        'Bug Reports': f'{repo}/issues',
+        'Source': repo,
     },
 )

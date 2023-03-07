@@ -13,3 +13,5 @@ __service_cache__
 *.json
 !test/sample*.txt
 !test/sample*.csv
+dist
+**/dist

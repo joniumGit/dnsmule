@@ -9,7 +9,7 @@ from dnsmule_plugins.ipranges.rule import IpRangeChecker
 async def test_fetching_task():
     checker = IpRangeChecker(providers=[])
 
-    assert checker.last_fetch is None, 'Spawned with fetch time'
+    assert checker._last_fetch is None, 'Spawned with fetch time'
 
     async def fetch_ranges():
         await sleep(.1)
@@ -19,7 +19,7 @@ async def test_fetching_task():
     await checker.check_fetch()
 
     assert not hasattr(checker, '_task'), 'Task did not get deleted'
-    assert checker.last_fetch is not None, 'Missing fetch time'
+    assert checker._last_fetch is not None, 'Missing fetch time'
 
 
 @async_test
@@ -52,10 +52,10 @@ async def test_fetching_task_if_not_recent():
 
     checker.start_fetching = start_fetch
 
-    checker.last_fetch = datetime.datetime.now()
+    checker._last_fetch = datetime.datetime.now()
     await checker.check_fetch()
     assert len(called) == 0, 'Task was called'
 
-    checker.last_fetch = checker.last_fetch - datetime.timedelta(days=1)
+    checker._last_fetch = checker._last_fetch - datetime.timedelta(days=1)
     await checker.check_fetch()
     assert len(called) == 1, 'Task was not called'

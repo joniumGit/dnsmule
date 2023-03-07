@@ -28,7 +28,7 @@ def startup():
         from dnsmule.rules.utils import load_rules
         from dnsmule_plugins import certcheck, ipranges
 
-        certcheck.plugin_certcheck(mule.rules, lambda ds: mule.store_domains(ds))
+        certcheck.plugin_certcheck(mule.rules, lambda ds: mule.store_domains(*ds))
         ipranges.plugin_ipranges(mule.rules)
 
         load_rules([

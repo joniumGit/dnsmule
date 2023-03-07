@@ -11,6 +11,7 @@ class CertChecker(Rule):
     timeout: float = 1
     stdlib: bool = False
     callback: bool = False
+
     _callback: Callable[[Collection[str]], None]
 
     @staticmethod
@@ -42,12 +43,13 @@ class CertChecker(Rule):
             domains.update(certificates.resolve_domain_from_certificate(cert))
         domains = process_domains(*domains)
         result = record.result()
-        if 'resolvedDomains' not in result.data:
-            result.data['resolvedDomains'] = {*domains}
-            result.data['resolvedIssuers'] = {*issuers}
+
+        certs = [c.to_json() for c in certs]
+        if 'resolvedCertificates' not in record:
+            result.data['resolvedCertificates'] = certs
         else:
-            result.data['resolvedDomains'].update(domains)
-            result.data['resolvedIssuers'].update(issuers)
+            result.data['resolvedCertificates'].extend(certs)
+
         for issuer in issuers:
             if issuer not in record.domain.name:
                 result.tags.add(f'IP::CERTS::{self.name.upper()}::ISSUER::{issuer.upper()}')

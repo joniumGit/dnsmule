@@ -1,33 +1,43 @@
 # Rules
 
+#### Summary
+
 The tool configuration is done through one or multiple rule configuration files. The file structure is defined in the
-[schema file](rules-schema.yml). There are some builtin rule types and it is possible to create new types by registering
-handlers programmatically.
+[schema file](rules-schema.yml). In addition to some builtin rule types, it is possible to create new types by
+registering handlers or rules programmatically.
 
-It is possible to register rules by files or by creating them programmatically.
+Rules support registration per DNS record type and priority for controlling invocation order.
 
-Example of programmatic usage (snippet from `dnsmule.backend.dnspython.py`):
+#### Example
 
 ```python
-def add_ptr_scan(rules: Rules):
-    @rules.add.A
-    async def ptr_scan(record: Record):
-        from dns.rdtypes.IN import A
-        from dnsmule.config import get_logger
-        og: A = record.data.data['original']
-        records = await query_records(reverse_query.from_address(og.to_text()), RdataType.PTR)
-        if RdataType.PTR in records:
-            for r in records[RdataType.PTR]:
-                get_logger().info('PTR %s', r.to_text())
-            data: dict = record.result().data
-            if 'ptr' not in data:
-                data['ptr'] = []
-            data['ptr'].extend(r.to_text() for r in records[RdataType.PTR])
+from dnsmule.definitions import Record, Result
+from dnsmule.rules import Rules, Rule
+
+rules: Rules
+
+...
+
+
+@rules.add.A[10]
+async def my_scan(record: Record) -> Result:
+    from dnsmule.config import get_logger
+    get_logger().info('Address %s', record)
+    return record.identify('MY::SCAN')
+
+
+@rules.register('my.rule')
+def create_my_rule(**arguments) -> Rule:
+    ...
 ```
 
-Any IANA defined DNS record type should work.
+Here the `add` is used to directly register a new rule into the ruleset with a given priority. The `register` call
+creates a new handler for rules of type `my.rule`. Any future `my.rule` creations from `yml` or code would be routed to
+this factory function.
 
-## Type Hints and JSON Schema (IntelliJ)
+## Editor Support
+
+#### Type Hints and JSON Schema (IntelliJ IDEA, PyCharm, etc.)
 
 It is possible to register the schema file as a custom JSON schema in IntelliJ editors.
 This will give access to typehints and schema validation inside rule files and is especially nice for dynamic rule
@@ -53,6 +63,8 @@ x-intellij-language-injection:
 
 Currently, this supports `dns.regex` pattern regex language injection and `dns.dynamic` rule code language injection.
 Type hints and quick documentation are available.
+
+## Builtin types
 
 #### Regex rules
 

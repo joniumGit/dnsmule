@@ -1,18 +1,18 @@
-from pathlib import Path
 from typing import Dict
 
 import pytest
 
 from dnsmule.definitions import RRType
-from dnsmule.rules import utils, Rule, DynamicRule
+from dnsmule.loader import load_rules, load_and_append_rule
+from dnsmule.rules import Rule, DynamicRule, Rules
 
 
-class MockRules:
+class MockRules(Rules):
     rtype: RRType
     rule: Rule = object()
     definition: Dict
 
-    def create_rule(self, definition):
+    def create_rule(self, type_name, definition):
         self.definition = definition
         return self.rule
 
@@ -39,12 +39,13 @@ def replace_method():
 def test_rules_utils_load_and_append():
     rules = MockRules()
 
-    utils.load_and_append_rule(
+    load_and_append_rule(
         rules,
+        RRType.TXT,
+        'type',
         {
-            'record': 'TXT',
             'a': 1,
-        }
+        },
     )
 
     assert rules.rtype == RRType.TXT, 'Failed to match type'
@@ -59,11 +60,13 @@ def test_rules_utils_load_and_append_dynamic():
     init_marker = []
     rules.rule.init = lambda f: init_marker.append(f)
 
-    utils.load_and_append_rule(
+    load_and_append_rule(
         rules,
+        RRType.TXT,
+        'dns.dynamic',
         {
-            'record': 'TXT',
-        }
+
+        },
     )
 
     assert len(init_marker) == 1, 'Failed to call init'
@@ -71,54 +74,40 @@ def test_rules_utils_load_and_append_dynamic():
     m2 = object()
     rules.rule = m2
 
-    init_marker[0]({'record': 'A'})
+    init_marker[0](
+        RRType.A,
+        'dns.dynamic',
+        {
+
+        },
+    )
     assert rules.rtype == RRType.A, 'Failed to call dynamic add'
 
 
 def test_rules_utils_creates_rules():
-    assert utils.load_rules([]) is not None, 'Did not create rules'
+    assert load_rules([]) is not None, 'Did not create rules'
 
 
-def test_rules_utils_takes_name_as_first_key(replace_method):
+def test_rules_utils_leaves_name(replace_method):
     definition = {
-        'a': None
+        'name': 'a',
+        'record': RRType.A,
+        'type': 'dns.regex',
+        'config': {
+            'name': 'abcd'
+        }
     }
-    replace_method(utils, 'load_and_append_rule', lambda *_, **__: None)
-    utils.load_rules([definition])
-
-    assert len(definition) == 1, 'Failed to remove key'
-    assert definition['name'] == 'a', 'Failed to modify key to name'
+    rules = load_rules([definition])
+    assert rules[RRType.A][0].name == 'abcd', 'Name was changed from one in config'
 
 
-def test_rules_utils_takes_existing_name(replace_method):
+def test_rules_utils_takes_name(replace_method):
     definition = {
-        'a': None,
-        'name': 'b',
+        'name': 'a',
+        'record': RRType.A,
+        'type': 'dns.regex',
+        'config': {
+        }
     }
-    replace_method(utils, 'load_and_append_rule', lambda *_, **__: None)
-    utils.load_rules([definition])
-
-    assert len(definition) == 1, 'Failed to remove key'
-    assert definition['name'] == 'b', 'Modified existing name'
-
-
-def test_rules_utils_pops_only_none(replace_method):
-    definition = {
-        'a': 'some value'
-    }
-    replace_method(utils, 'load_and_append_rule', lambda *_, **__: None)
-    utils.load_rules([definition])
-
-    assert len(definition) == 2, 'Actually removed not-none key'
-    assert definition['name'] == 'a', 'Failed to modify key to name'
-    assert definition['a'] == 'some value', 'Did not preserve key'
-
-
-def test_loading_empty_rules():
-    assert utils.load_config(Path(__file__).parent / 'sample_1.yml') is not None, 'Failed to create rules'
-
-
-def test_loading_existing_rules():
-    marker = object()
-    rules = utils.load_config(Path(__file__).parent / 'sample_1.yml', rules=marker)
-    assert rules is marker, 'Failed to persist rules'
+    rules = load_rules([definition])
+    assert rules[RRType.A][0].name == 'a', 'Name was not rule name'

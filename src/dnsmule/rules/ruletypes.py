@@ -85,12 +85,15 @@ class DynamicRule(Rule):
 
     def init(self, create_callback: RuleFactory):
         def add_rule(record_type: Any, rule_type: str, name: str, priority: int = 0, **options):
-            create_callback(name, {
-                'record': record_type,
-                'type': rule_type,
-                'priority': priority,
-                **options,
-            })
+            create_callback(
+                record_type,
+                rule_type,
+                {
+                    **options,
+                    'name': name,
+                    'priority': priority,
+                },
+            )
 
         self.globals['add_rule'] = add_rule
         exec(self._code, self.globals)

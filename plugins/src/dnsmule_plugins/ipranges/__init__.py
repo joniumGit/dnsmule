@@ -1,11 +1,14 @@
-from dnsmule.rules import Rules
+from dnsmule import DNSMule
+from dnsmule.plugins import Plugin
 from .rule import IpRangeChecker
 
 
-def plugin_ipranges(rules: Rules):
-    rules.register('ip.ranges')(IpRangeChecker)
+class IPRangesPlugin(Plugin):
+
+    def register(self, mule: DNSMule):
+        mule.rules.register('ip.ranges')(IpRangeChecker)
 
 
 __all__ = [
-    'plugin_ipranges',
+    'IPRangesPlugin',
 ]

@@ -23,46 +23,6 @@ def startup():
     get_logger().setLevel(INFO)
 
     mule = DNSMule(file=Path(__file__).parent.parent / 'rules' / 'rules.yml')
-
-    try:
-        from dnsmule.rules.utils import load_rules
-        from dnsmule_plugins import certcheck, ipranges
-
-        certcheck.plugin_certcheck(mule.rules, lambda ds: mule.store_domains(*ds))
-        ipranges.plugin_ipranges(mule.rules)
-
-        load_rules([
-            {
-                'record': 'A',
-                'type': 'ip.certs',
-                'name': 'certcheck',
-            },
-            {
-                'record': 'A',
-                'type': 'ip.ranges',
-                'name': 'ipranges',
-                'providers': [
-                    'amazon',
-                    'microsoft',
-                    'google',
-                ]
-            },
-        ], rules=mule.rules)
-
-        if mule.backend == 'DNSPythonBackend':
-            from dnsmule_plugins import ptrscan
-
-            ptrscan.plugin_ptr_scan(mule.rules, mule.get_backend())
-            load_rules([
-                {
-                    'record': 'A',
-                    'type': 'ip.ptr',
-                    'name': 'ptrscan',
-                },
-            ], rules=mule.rules)
-    except ImportError:
-        pass
-
     app.state.mule = mule
 
 
@@ -117,9 +77,7 @@ def get_rules(mule: DNSMule = Depends(get_mule)):
 @app.post('/rules', status_code=201)
 def create_rule(definition: RuleDefinition, mule: DNSMule = Depends(get_mule)):
     definition.config['name'] = definition.name
-    definition.config['type'] = definition.type
-
-    rule = mule.rules.create_rule(definition.config)
+    rule = mule.rules.create_rule(definition.type, definition.config)
     mule.rules.add_rule(definition.record, rule)
 
 

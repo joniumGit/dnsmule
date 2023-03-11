@@ -1,4 +1,4 @@
-from typing import Dict, Callable
+from typing import Dict, Callable, Any
 
 from ..definitions import RRType, Record, Result
 from ..utils import Comparable
@@ -59,7 +59,7 @@ class Rule(metaclass=Comparable, key='priority', reverse=True):
         return isinstance(other, Rule) and other.name == self.name or other == self.name
 
 
-RuleFactory = Callable[[str, Dict], Rule]
+RuleFactory = Callable[[RRType, str, Dict[str, Any]], Rule]
 
 
 class RuleCreator:

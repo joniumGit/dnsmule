@@ -2,78 +2,109 @@ version: '0.0.1'
 backend:
   name: 'dnspython.DNSPythonBackend'
   config:
-    #    resolver: '8.8.8.8'
     timeout: 2
+plugins:
+  - name: dnsmule_plugins.CertCheckPlugin
+    config:
+      callback: false
+  - name: dnsmule_plugins.IPRangesPlugin
+  - name: dnsmule_plugins.PTRScanPlugin
 rules:
-  - o365:
+  - name: o365
     type: dns.regex
     record: txt
-    pattern: '^MS=ms'
-    identification: MICROSOFT::O365
-  - ses:
+    config:
+      pattern: '^MS=ms'
+      identification: MICROSOFT::O365
+  - name: ses
     type: dns.regex
     record: txt
-    pattern: '^amazonses:'
-    identification: AMAZON::SES
-  - azure:
+    config:
+      pattern: '^amazonses:'
+      identification: AMAZON::SES
+  - name: azure
     type: dns.regex
     record: txt
-    pattern: '^.*\.azurewebsites\.'
-    identification: MICROSOFT::AZURE
-  - generic_verification:
+    config:
+      pattern: '^.*\.azurewebsites\.'
+      identification: MICROSOFT::AZURE
+  - name: generic_verification
     type: dns.regex
     record: txt
-    patterns:
-      - '^(.+)(?:-(?:site|domain))?-verification='
-      - '^(.+)(?:site|domain)verification'
-      - '^(.+)_verify_'
-      - '^(\w+)-code:'
-    group: 1
-  - log_txt:
+    config:
+      patterns:
+        - '^(.+)(?:-(?:site|domain))?-verification='
+        - '^(.+)(?:site|domain)verification'
+        - '^(.+)_verify_'
+        - '^(\w+)-code:'
+      group: 1
+  - name: log_txt
     description: Logs possibly interesting TXT records
     type: dns.dynamic
     record: txt
-    code: |
-      from dnsmule.config import get_logger
-      
-      seen = set()
-      
-      
-      def init():
-          get_logger().info('Initializing TXT detector example')
-      
-      
-      def process(record: Record) -> Result:
-          data: str = record.data.to_text()
-          if 'verif' in data:
-              if '=' in data:
-                  key = data.partition('=')[0]
-                  if key in seen:
-                      return
-                  seen.add(key)
-              get_logger().info(f'Found a verify record: %s', data)
-
-  - cname_providers:
+    config:
+      code: |
+        from dnsmule.config import get_logger
+        
+        seen = set()
+        
+        
+        def init():
+            get_logger().info('Initializing TXT detector example')
+        
+        
+        def process(record: Record) -> None:
+            data: str = record.data.to_text()
+            if 'verif' in data:
+                if '=' in data:
+                    key = data.partition('=')[0]
+                    if key in seen:
+                        return
+                    seen.add(key)
+                get_logger().info(f'Found a verify record: %s', data)
+  - name: cname_providers
     type: dns.dynamic
     record: cname
-    code: |
-      cnames = {
-          'edgekey.net': 'Akamai CDN',
-          'cloudflare.net': 'Cloudflare CDN',
-          'cloudfront.net': 'Amazon Cloudfront',
-          'github.io': 'GitHub Pages',
-          'azureedge.net': 'Azure CDN',
-          'awsglobalaccelerator.com': 'Amazon Accelerator',
-          'amazonaws.com': 'Amazon Web Services',
-          'simpli.fi': 'Simpli ADS',
-          'doubleclick.net': 'Doubleclick',
-      }
-      
-      
-      def process(record: Record) -> Result:
-          result = record.result()
-          for key in cnames:
-              _key = f'DNS::CIDER::{key.split(".")[0].upper()}'
-              if key in record.data.to_text():
-                  result.tags.add(_key)
-          return result
+    config:
+      code: |
+        cnames = {
+            'edgekey.net': 'Akamai CDN',
+            'cloudflare.net': 'Cloudflare CDN',
+            'cloudfront.net': 'Amazon Cloudfront',
+            'github.io': 'GitHub Pages',
+            'azureedge.net': 'Azure CDN',
+            'awsglobalaccelerator.com': 'Amazon Accelerator',
+            'amazonaws.com': 'Amazon Web Services',
+            'simpli.fi': 'Simpli ADS',
+            'doubleclick.net': 'Doubleclick',
+        }
+        
+        
+        def process(record: Record) -> Result:
+            result = record.result()
+            for key in cnames:
+                _key = f'DNS::CIDER::{key.split(".")[0].upper()}'
+                if key in record.data.to_text():
+                    result.tags.add(_key)
+            return result
+  - name: ptrscan
+    type: ip.ptr
+    record: A
+    description:
+      Scans PTR records for cloud providers.
+  - name: certcheck
+    type: ip.certs
+    record: A
+    description:
+      Checks certificates for more domains to scan and tags issuers.
+      Also, records all certificates to result data.
+  - name: ipranges
+    type: ip.ranges
+    record: A
+    description:
+      Checks common cloud provider ipranges for matches.
+    config:
+      providers:
+        - amazon
+        - microsoft
+        - google

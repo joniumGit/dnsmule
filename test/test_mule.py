@@ -8,7 +8,9 @@ from dnsmule import DNSMule, RRType
 from dnsmule.backends.abstract import Backend
 from dnsmule.backends.noop import NOOPBackend
 from dnsmule.definitions import Domain, Record, Result
-from dnsmule.rules import Rules
+from dnsmule.loader import Config, Initializer
+from dnsmule.plugins.noop import NOOPPlugin
+from dnsmule.rules import Rules, Rule
 
 
 class SimpleBackend(Backend):
@@ -20,13 +22,20 @@ class SimpleBackend(Backend):
 
 def test_mule_load_simple():
     mule = DNSMule.load(Path(__file__).parent / 'sample_1.yml')
-    assert type(mule.get_backend()) == NOOPBackend, 'Failed to create correct backend'
+    assert type(mule.backend) == NOOPBackend, 'Failed to create correct backend'
 
 
 def test_mule_with_existing_backend_and_rules():
     rules = Rules()
     mule = DNSMule.make(rules=rules, backend=SimpleBackend())
-    assert type(mule.get_backend()) == SimpleBackend, 'Failed to persist backend'
+    assert type(mule.backend) == SimpleBackend, 'Failed to persist backend'
+    assert mule.rules is rules, 'Failed to persist rules'
+
+
+def test_mule_with_existing_backend_and_rules_from_file():
+    rules = Rules()
+    mule = DNSMule(file=Path(__file__).parent / 'sample_1.yml', rules=rules, backend=SimpleBackend())
+    assert type(mule.backend) == SimpleBackend, 'Failed to persist backend'
     assert mule.rules is rules, 'Failed to persist rules'
 
 
@@ -42,9 +51,9 @@ def test_mule_nones():
 @async_test
 async def test_mule_swap_backend():
     mule = DNSMule.load(Path(__file__).parent / 'sample_1.yml')
-    assert type(mule.get_backend()) == NOOPBackend, 'Failed to create correct backend'
+    assert type(mule.backend) == NOOPBackend, 'Failed to create correct backend'
     await mule.swap_backend(SimpleBackend())
-    assert type(mule.get_backend()) == SimpleBackend, 'Failed to swap backend'
+    assert type(mule.backend) == SimpleBackend, 'Failed to swap backend'
 
 
 @async_test
@@ -118,7 +127,7 @@ def test_mule_store_same_domain_same_length():
 def test_mule_append_rules():
     mule = DNSMule.make(Rules(), NOOPBackend())
     assert len(mule.rules) == 0, 'Rules not empty'
-    mule.append_rules(Path(__file__).parent / 'sample_2.yml')
+    mule.append_config(Path(__file__).parent / 'sample_2.yml')
     assert len(mule.rules) != 0, 'Rules still empty'
 
 
@@ -153,10 +162,56 @@ async def test_mule_run_adds_domains():
     r = Result(Domain('a'))
     r.tags.add('abcd')
 
-    mule.get_backend().o = r
+    mule.backend.o = r
 
     assert len(mule) == 0, 'Mule not empty on creation'
     await mule.run('a')
 
     assert len(mule) == 1, 'Mule did not store domain'
     assert mule['a'].tags == {'abcd'}, 'Failed to add result'
+
+
+def test_mule_duplicate_rule_throws():
+    m = DNSMule.make(Rules(), SimpleBackend())
+    m.rules.add_rule(RRType.TXT, Rule(lambda: None, name='regex_test'))
+    with pytest.raises(ValueError):
+        m.append_config(Path(__file__).parent / 'sample_2.yml')
+
+
+def test_mule_duplicate_rule_name_different_record_ok():
+    m = DNSMule.make(Rules(), SimpleBackend())
+    m.rules.add_rule(65535, Rule(lambda: None, name='regex_test'))
+    m.append_config(Path(__file__).parent / 'sample_2.yml')
+    assert sum(map(len, m.rules.values())) == 2, 'Did not match rule count'
+
+
+def test_mule_add_rule_with_existing_record_ok():
+    m = DNSMule.make(Rules(), SimpleBackend())
+    m.rules.add_rule(RRType.TXT, Rule(lambda: None, name='regex_test_2'))
+    m.append_config(Path(__file__).parent / 'sample_2.yml')
+    assert sum(map(len, m.rules.values())) == 2, 'Did not match rule count'
+
+
+def test_mule_backend_type_name():
+    m = DNSMule.make(Rules(), SimpleBackend())
+    assert m.backend_type == 'SimpleBackend', 'Failed to get type name for backend'
+
+
+def test_mule_add_existing_plugin_does_not_call_init():
+    m = DNSMule.make(Rules(), SimpleBackend())
+    called_count = [0]
+
+    class FalseNoopPlugin(NOOPPlugin):
+        @property
+        def type(self):
+            return type(self).__name__
+
+        def register(self, _):
+            called_count[0] += 1
+
+    m._append_plugins(Config(plugins=[Initializer(type='noop', f=FalseNoopPlugin)], backend=None, rules=None))
+    assert 'noop' in m.plugins, 'Did not add plugin'
+    assert called_count[0] == 1, 'Did not call register'
+
+    m._append_plugins(Config(plugins=[Initializer(type='noop', f=FalseNoopPlugin)], backend=None, rules=None))
+    assert called_count[0] == 1, 'Called the plugin registration again'

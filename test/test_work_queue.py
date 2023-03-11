@@ -12,7 +12,7 @@ def create_item():
         async def item():
             if wait:
                 # Adjust this to run tests faster, but with less accuracy
-                await asyncio.sleep(wait / 100)
+                await asyncio.sleep(wait / 50)
             return return_value if not callable(return_value) else return_value()
 
         return item()

@@ -1,15 +1,19 @@
 from pathlib import Path
 from threading import Lock
-from typing import Union, Dict, Mapping, List
+from typing import Union, Dict, Mapping, List, Set
 
-from .backends import Backend, load_config as load_backend
+from .backends import Backend
+from .config import get_logger
 from .definitions import Domain, Result
-from .rules import Rules, load_config as load_rules
+from .loader import load_config, Config
+from .rules import Rules
 
 
 class DNSMule(Mapping[Union[str, Domain], Result]):
     rules: Rules
-    _backend: Backend
+    backend: Backend
+    plugins: Set[str]
+
     _data: Dict[Union[str, Domain], Result]
 
     @staticmethod
@@ -21,28 +25,57 @@ class DNSMule(Mapping[Union[str, Domain], Result]):
         return DNSMule(rules=rules, backend=backend)
 
     def __init__(self, file: Union[str, Path] = None, rules: Rules = None, backend: Backend = None):
-        if file:
-            self.rules = load_rules(file)
-            self._backend = load_backend(file)
-        else:
+        self.plugins = set()
+        if rules is not None:
             self.rules = rules
-            self._backend = backend
-        if self.rules is None or self._backend is None:
-            raise ValueError('Invalid Configuration')
-        self.backend = type(self._backend).__name__
+        if backend is not None:
+            self.backend = backend
+        if file:
+            config = load_config(file)
+            if backend is None:
+                self.backend = config.backend()
+            if rules is None:
+                self.rules = Rules()
+            self._append_plugins(config)
+            self._append_rules(config)
+        if getattr(self, 'rules', None) is None or getattr(self, 'backend', None) is None:
+            raise ValueError('Both Rules and Backend Required')
         self._data = dict()
         self._lock = Lock()
 
-    def get_backend(self):
-        return self._backend
+    @property
+    def backend_type(self):
+        return type(self.backend).__name__
 
     async def swap_backend(self, backend: Backend):
-        await self._backend.stop()
-        self._backend = backend
+        await self.backend.stop()
+        self.backend = backend
         await backend.start()
 
-    def append_rules(self, f: Union[str, Path]):
-        load_rules(f, rules=self.rules)
+    def _append_plugins(self, cfg: Config):
+        for plugin_initializer in cfg.plugins:
+            if plugin_initializer.type not in self.plugins:
+                self.plugins.add(plugin_initializer.type)
+                plugin_initializer().register(self)
+            else:
+                get_logger().debug(f'Plugin already loaded: {plugin_initializer.type}')
+
+    def _append_rules(self, cfg: Config):
+        cfg.rules(rules=self.rules)
+
+    def append_config(self, f: Union[str, Path]):
+        """Loads rules and plugins from a yaml configuration and adds them to this mule
+
+        :raises ValueError: On duplicate rules
+        """
+        cfg = load_config(
+            f,
+            rules=True,
+            backend=False,
+            plugins=True,
+        )
+        self._append_plugins(cfg)
+        self._append_rules(cfg)
 
     def store_result(self, result: Result):
         with self._lock:
@@ -72,7 +105,7 @@ class DNSMule(Mapping[Union[str, Domain], Result]):
 
     async def run(self, *domains: str):
         self.store_domains(*domains)
-        async for result in self._backend.run(self.rules, *domains):
+        async for result in self.backend.run(self.rules, *domains):
             self.store_result(result)
 
     def domains(self) -> List[str]:
@@ -86,12 +119,12 @@ class DNSMule(Mapping[Union[str, Domain], Result]):
         await self.stop()
 
     async def start(self):
-        await self._backend.start()
+        await self.backend.start()
 
     async def stop(self):
-        await self._backend.stop()
+        await self.backend.stop()
 
 
 __all__ = [
-    'DNSMule'
+    'DNSMule',
 ]

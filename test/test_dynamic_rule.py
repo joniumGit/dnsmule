@@ -25,12 +25,12 @@ def test_dynamic_rule_callback_called(code='add_rule("a", "b", "c")'):
     r = DynamicRule(code=code)
     called = [False]
 
-    def callback(name, config):
+    def callback(record, rtype, config):
         called[0] = True
-        assert name == 'c', 'Name did not match'
+        assert record == 'a', 'Record type did not match'
+        assert rtype == 'b', 'Rule type did not match'
         assert config == {
-            'record': 'a',
-            'type': 'b',
+            'name': 'c',
             'priority': 0,
         }, 'Config did not match'
         return DynamicRule(code='a = 1')

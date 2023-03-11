@@ -1,1 +1,5 @@
-__version__ = '0.0.1'
+from .certcheck import CertCheckPlugin
+from .ipranges import IPRangesPlugin
+from .ptrscan import PTRScanPlugin
+
+__version__ = '0.1.0'

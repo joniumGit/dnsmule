@@ -40,6 +40,15 @@ def test_rules_iter_returns_keys_from_rules(rules):
     assert next(iter(rules)) == RRType.TXT, 'Did not return the expected iteration result'
 
 
+def test_rules_iter_other_methods(rules):
+    marker = object()
+    rules._rules[RRType.TXT] = marker
+
+    assert next(iter(rules.items())) == (RRType.TXT, marker), 'Did not return the expected item'
+    assert next(iter(rules.values())) == marker, 'Did not return the expected value'
+    assert rules[RRType.A] == [], 'Did not return the default value'
+
+
 def test_rules_getitem_returns_items_from_rules(rules):
     marker = object()
     rules._rules[RRType.TXT] = marker
@@ -147,3 +156,14 @@ async def test_rules_process_normal_rule(rules):
     await rules.process_record(Record(domain='example.com', data='', type=RRType.MX))
 
     assert MockRule.called == {'__call__'}, 'Not all or too many methods were called'
+
+
+def test_rules_contains():
+    r = Rules()
+    assert RRType.A not in r, 'Contained data even though empty'
+
+
+def test_rules_get_defaults():
+    r = Rules()
+    assert RRType.A not in r, 'Contained data even though empty'
+    assert r[RRType.A] == [], 'Did not default'

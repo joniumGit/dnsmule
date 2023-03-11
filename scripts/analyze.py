@@ -64,7 +64,7 @@ def rules_interactive(
 
     async def run_rules(domain: str) -> Dict[RRType, Result]:
         results = defaultdict(list)
-        async for result in mule.get_backend().run_single(mule.rules, Domain(domain)):
+        async for result in mule.backend.run_single(mule.rules, Domain(domain)):
             results[next(iter(result.type))].append(result)
         return {
             k: sum(v[1:], start=v[0]) if len(v) != 1 else v[0]

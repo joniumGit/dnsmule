@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Any
 
 from .entities import Rule, RuleFactory
 from .ruletypes import DynamicRule, RegexRule
@@ -11,10 +11,10 @@ class RuleFactoryMixIn:
         self._factories = {}
         add_default_factories(self)
 
-    def create_rule(self, definition: Dict) -> Rule:
+    def create_rule(self, type_name: str, definition: Dict[str, Any]) -> Rule:
         """Creates a rule from rule config
         """
-        return self._factories[definition.pop('type')](**definition)
+        return self._factories[type_name](**definition)
 
     def register(self, type_name: str):
         """Registers a handler for a rule type

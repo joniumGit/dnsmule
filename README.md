@@ -31,6 +31,15 @@ States (Complete, Testing, Developing, Refining) for every feature planned at th
     - Result storage (Refining)
     - Combined YAML definition (Refining)
 
+#### Example server
+
+The repo has a `Dockerfile` for easily running the tool using an example server in Docker:
+
+```shell
+$ ./build-image
+$ ./run-server
+```
+
 #### Notice
 
 This package is under active development.

@@ -11,25 +11,31 @@ There are two builtin rule formats with more available as plugins.
 
 States (Complete, Testing, Developing, Refining) for every feature planned at this moment.
 
-- Backends (Complete)
-    - DNSPythonBackend
-    - YAML definition
-- Rules (Testing)
-    - Builtin types
-    - Custom rules
-    - Custom rule factories
-    - YAML definition (Complete)
-- Plugins (Developing)
-    - Registration in program (Developing)
-    - Registration in YAML (Refining)
-    - YAML definition (Refining)
-- DNSMule (Developing)
-    - Rules from YAML (Complete)
-    - Backend from YAML (Complete)
-    - Processing and gathering results (Testing)
-    - Plugins from YAML (Refining)
-    - Result storage (Refining)
-    - Combined YAML definition (Refining)
+- (Complete) Backends
+    - (Complete) DNSPythonBackend
+    - (Complete) YAML definition
+- (Complete) Rules
+    - (Complete) Builtin types
+    - (Complete) Custom rules
+    - (Complete) Custom rule factories
+    - (Complete) YAML definition
+- (Testing) Plugins
+    - (Complete) Registration in program
+    - (Complete) Registration in YAML
+    - (Complete) YAML definition
+    - (Developing) Increasing test coverage
+- (Refining) Result Storage
+    - (Refining) Registration in program
+    - (Refining) Registration in YAML
+    - (Refining) YAML definition
+- (Developing) DNSMule
+    - (Complete) Rules from YAML
+    - (Complete) Backend from YAML
+    - (Testing) Plugins from YAML
+    - (Developing) Processing and gathering results
+    - (Refining) Result storage
+    - (Refining) Result storage from YAML
+    - (Refining) Combined YAML definition
 
 #### Example server
 

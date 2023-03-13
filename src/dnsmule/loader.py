@@ -158,4 +158,5 @@ def load_config(
 __all__ = [
     'load_config',
     'Config',
+    'load_and_append_rule',
 ]

@@ -1,6 +1,6 @@
 # Rules
 
-#### Summary
+## Summary
 
 The tool configuration is done through one or multiple rule configuration files. The file structure is defined in the
 [schema file](rules-schema.yml). In addition to some builtin rule types, it is possible to create new types by
@@ -52,6 +52,40 @@ def create_my_rule(**arguments) -> Rule:
 Here the `add` is used to directly register a new rule into the ruleset with a given priority. The `register` call
 creates a new handler for rules of type `my.rule`. Any future `my.rule` creations from `yml` or code would be routed to
 this factory function.
+
+## Other Components in YAML
+
+#### Plugins
+
+It is possible to register plugins using the YAML file:
+
+```yaml
+plugins:
+  - name: dnsmule_plugins.CertCheckPlugin
+    config:
+      callback: false
+```
+
+These are required to extend the `dnsmule.plugins.Plugin` class.
+Plugins are evaluated and initialized before rules.
+Any rules requiring a plugin should list their plugin in this block.
+Plugins are only initialized once and if a plugin already exists in the receiving DNSMule instance
+it will be ignored.
+
+#### Backends
+
+It is possible to define a single backend in a YAML file:
+
+```yaml
+backend:
+  name: 'dnspython.DNSPythonBackend'
+  config:
+    timeout: 5.5
+    resolver: 8.8.8.8
+```
+
+The backend must extend the `dnsmule.backends.Backend` class.
+This declaration is ignored if this is not used in `DNSMule.load` or `DNSMule(file=file)`.
 
 ## Editor Support
 

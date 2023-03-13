@@ -8,15 +8,16 @@ Arguments:
 
 ```yaml
 rules:
-  - certcheck:
+  - name: certcheck
     record: A
     type: 'ip.certs'
-    ports: # Ports to scan
-      - 443
-      - 8443
-    timeout: 1 # timeout for cert fetching
-    stdlib: false # Prefer STDLIB implementation
-    callback: false # Whether a callback should be called for resolved domains
+    config:
+      ports: # Ports to scan
+        - 443
+        - 8443
+      timeout: 1 # timeout for cert fetching
+      stdlib: false # Prefer STDLIB implementation
+      callback: false # Whether a callback should be called for resolved domains
 ```
 
 Scans any resolved `A` or `AAAA` record for certificates from a given list of ports.
@@ -48,13 +49,14 @@ Arguments:
 
 ```yaml
 rules:
-  - ipranges:
+  - name: ipranges
     record: A
     type: 'ip.ranges'
-    providers: # Lowercase only
-      - amazon
-      - google
-      - microsoft
+    config:
+      providers: # Lowercase only
+        - amazon
+        - google
+        - microsoft
 ```
 
 Scans any resolved `A` or `AAAA` record for addresses in the major cloud provider ranges.
@@ -83,7 +85,7 @@ Arguments:
 
 ```yaml
 rules:
-  - ptrscan:
+  - name: ptrscan
     record: A
     type: 'ip.ptr'
 ```
@@ -122,30 +124,44 @@ This plugin requires the following dependencies:
 
 ## Example
 
+In YAML the plugins are placed in their own `plugins` block:
+
+```yaml
+plugins:
+  - name: dnsmule_plugins.PTRScanPlugin
+  - name: dnsmule_plugins.IPRangesPlugin
+  - name: dnsmule_plugins.CertCheckPlugin
+    config:
+      callback: false
+```
+
 Here is an example of how to add a ruleset containing all plugins to a `DNSMule` instance.
-This will change in the future when a `plugins` directive is supported in the `rules.yml` config.
 
 ```python
-import os
+from dnsmule import DNSMule, RRType, Rules
+from dnsmule.backends.dnspython import DNSPythonBackend
+from dnsmule.loader import load_and_append_rule
+from dnsmule_plugins import certcheck, ipranges, ptrscan
 
-from dnsmule import DNSMule
-from dnsmule.rules.utils import load_rules
-from dnsmule_plugins import certcheck, ipranges
+mule = DNSMule.make(Rules(), DNSPythonBackend())
 
-mule = DNSMule.load(os.getenv('MULE_CONFIG'))
+certcheck.CertCheckPlugin(callback=False).register(mule)
+ipranges.IPRangesPlugin().register(mule.rules)
 
-certcheck.plugin_certcheck(mule.rules, lambda ds: mule.store_domains(*ds))
-ipranges.plugin_ipranges(mule.rules)
-
-load_rules([
+load_and_append_rule(
+    mule.rules,
+    RRType.A,
+    'ip.certs',
     {
-        'record': 'A',
-        'type': 'ip.certs',
         'name': 'certcheck',
     },
+)
+
+load_and_append_rule(
+    mule.rules,
+    RRType.A,
+    'ip.ranges',
     {
-        'record': 'A',
-        'type': 'ip.ranges',
         'name': 'ipranges',
         'providers': [
             'amazon',
@@ -153,17 +169,17 @@ load_rules([
             'google',
         ]
     },
-], rules=mule.rules)
 
-if mule.backend == 'DNSPythonBackend':
-    from dnsmule_plugins import ptrscan
+)
 
-    ptrscan.plugin_ptr_scan(mule.rules, mule.get_backend())
-    load_rules([
+if mule.backend_type == 'DNSPythonBackend':
+    ptrscan.PTRScanPlugin().register(mule)
+    load_and_append_rule(
+        mule.rules,
+        RRType.A,
+        'ip.ptr',
         {
-            'record': 'A',
-            'type': 'ip.ptr',
-            'name': 'ptrscan',
+            'name': 'ptrscan'
         },
-    ], rules=mule.rules)
+    )
 ```

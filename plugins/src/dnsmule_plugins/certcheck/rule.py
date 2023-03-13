@@ -28,14 +28,14 @@ class CertChecker(Rule):
         address: str = record.data.to_text()
         certs = []
         for port in self.ports:
-            cert = certificates.collect_certificate(
-                address,
-                port=port,
-                timeout=self.timeout,
-                prefer_stdlib=self.stdlib,
+            certs.extend(
+                certificates.collect_certificates(
+                    address,
+                    port=port,
+                    timeout=self.timeout,
+                    prefer_stdlib=self.stdlib,
+                )
             )
-            if cert:
-                certs.append(cert)
         domains = set()
         issuers = set()
         for cert in certs:
@@ -50,9 +50,6 @@ class CertChecker(Rule):
         else:
             result.data['resolvedCertificates'].extend(certs)
 
-        for issuer in issuers:
-            if issuer not in record.domain.name:
-                result.tags.add(f'IP::CERTS::{self.name.upper()}::ISSUER::{issuer.upper()}')
         if self.callback:
             self._callback(domains)
         return result

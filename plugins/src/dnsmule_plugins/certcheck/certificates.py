@@ -115,11 +115,6 @@ def collect_certificate(
         timeout: float = 1.,
         prefer_stdlib: bool = True,
 ) -> Optional[Certificate]:
-    import socket
-    try:
-        host = socket.gethostbyname(host)
-    except socket.gaierror:
-        return None
     if prefer_stdlib:
         cert = collect_certificate_stdlib(host, port, timeout)
     else:
@@ -134,6 +129,25 @@ def collect_certificate(
     return Certificate(**cert) if cert else None
 
 
+def collect_certificates(host: str, port: int, **kwargs) -> List[Certificate]:
+    import socket
+    out = []
+    try:
+        for family, _, _, _, info in socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP):
+            if family == socket.AF_INET:
+                address, _ = info
+            elif family == socket.AF_INET6:
+                address, _, _, _ = info
+            else:
+                continue
+            cert = collect_certificate(address, port, **kwargs)
+            if cert:
+                out.append(cert)
+    except socket.error:
+        pass
+    return out
+
+
 def resolve_domain_from_certificate(cert: Certificate) -> List[str]:
     """Returns all names from a certificate retrieved from an ip-address
 
@@ -146,7 +160,7 @@ def resolve_domain_from_certificate(cert: Certificate) -> List[str]:
 
 
 __all__ = [
-    'collect_certificate',
+    'collect_certificates',
     'Certificate',
     'resolve_domain_from_certificate',
 ]

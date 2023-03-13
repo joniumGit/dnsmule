@@ -6,7 +6,7 @@ from typing import List, Optional, Tuple
 from dnsmule.config import get_logger
 
 
-@dataclass
+@dataclass(frozen=True, unsafe_hash=True, eq=True)
 class Certificate:
     version: str
     common: str

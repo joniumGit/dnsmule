@@ -1,6 +1,6 @@
 from typing import Callable, Collection, List
 
-from dnsmule.definitions import Record
+from dnsmule.definitions import Record, Result
 from dnsmule.rules import Rule
 from dnsmule.utils import process_domains
 from . import certificates
@@ -24,7 +24,7 @@ class CertChecker(Rule):
 
         return registerer
 
-    def __call__(self, record: Record) -> None:
+    def __call__(self, record: Record) -> Result:
         address: str = record.data.to_text()
         certs = []
         for port in self.ports:
@@ -45,7 +45,7 @@ class CertChecker(Rule):
         result = record.result()
 
         certs = [c.to_json() for c in certs]
-        if 'resolvedCertificates' not in record:
+        if 'resolvedCertificates' not in result.data:
             result.data['resolvedCertificates'] = certs
         else:
             result.data['resolvedCertificates'].extend(certs)

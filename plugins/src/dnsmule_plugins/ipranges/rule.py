@@ -20,6 +20,9 @@ class IpRangeChecker(DynamicRule):
         self.globals = {}
         self.providers = [*{*self.providers}] if hasattr(self, 'providers') else []
         self._provider_ranges = {}
+        for provider in self.providers:
+            # If this fails it will throw
+            self._get_fetcher(provider)
 
     def update_fetched(self, *_, **__):
         self._last_fetch = datetime.datetime.now()
@@ -32,25 +35,29 @@ class IpRangeChecker(DynamicRule):
     def init(self, *_, **__):
         self.start_fetching()
 
+    @staticmethod
+    def _get_fetcher(provider: str):
+        return getattr(ranges, f'fetch_{provider}_ip_ranges')
+
     async def fetch_provider(self, provider: str):
         if provider not in self._provider_ranges:
-            self._provider_ranges[provider] = await asyncio.create_task(
-                getattr(ranges, f'fetch_{provider}_ip_ranges')())
+            self._provider_ranges[provider] = await asyncio.create_task(self._get_fetcher(provider)())
 
     async def fetch_ranges(self):
         tasks = []
         for k in self.providers:
             tasks.append(asyncio.create_task(self.fetch_provider(k)))
-        try:
-            await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
-        except:
-            coro = asyncio.gather(*tasks)
-            coro.cancel()
+        if tasks:
             try:
-                await coro
-            except (asyncio.TimeoutError, asyncio.CancelledError):
-                pass
-            raise
+                await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
+            except:
+                coro = asyncio.gather(*tasks)
+                coro.cancel()
+                try:
+                    await coro
+                except (asyncio.TimeoutError, asyncio.CancelledError):
+                    pass
+                raise
 
     async def check_fetch(self):
         if hasattr(self, '_task'):

@@ -45,6 +45,12 @@ class RRType(IntEnum):
     def of(cls, value: int) -> Union['RRType', int]:
         return cls.from_any(value)
 
+    def __str__(self):
+        return RRType.to_text(self)
+
+    def __repr__(self):
+        return self.__str__()
+
     A: int = 1
     """
     a host address

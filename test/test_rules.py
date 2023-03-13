@@ -167,3 +167,12 @@ def test_rules_get_defaults():
     r = Rules()
     assert RRType.A not in r, 'Contained data even though empty'
     assert r[RRType.A] == [], 'Did not default'
+
+
+def test_rules_has_rule():
+    r = Rules()
+    r._rules[RRType.A] = ['a']
+    assert r.has_rule('A', 'a'), 'Failed to have rule for str'
+    assert r.has_rule(1, 'a'), 'Failed to have rule for int'
+    assert r.has_rule(RRType.A, 'a'), 'Failed to have rule for RRType'
+    assert r.has_rule('RRType.of(1)', 'a'), 'Failed to have rule for RRType'

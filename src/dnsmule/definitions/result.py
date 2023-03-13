@@ -61,7 +61,7 @@ class Result:
         return {
             'domain': self.domain.name,
             'type': [
-                RRType.to_text(t).removeprefix('RRType.') if isinstance(t, RRType) else t
+                str(t)
                 for t in map(RRType.from_any, sorted(self.type))
             ],
             'tags': [*self.tags],

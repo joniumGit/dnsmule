@@ -52,7 +52,8 @@ class Rules(Mapping[Union[int, RRType], List[Rule]], RuleFactoryMixIn):
         return item in self._rules
 
     def has_rule(self, record: Union[int, RRType, str], name: str) -> bool:
-        return name in self._rules[RRType.from_any(record)] if record in self._rules else False
+        record = RRType.from_any(record)
+        return name in self._rules[record] if record in self._rules else False
 
     def rule_count(self):
         return sum(len(c) for c in self._rules.values())

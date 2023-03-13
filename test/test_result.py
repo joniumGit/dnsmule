@@ -111,7 +111,7 @@ def test_result_to_dict():
         'type': [
             'A',
             'TXT',
-            65530,
+            '65530',
         ],
         'tags': [
             'test-tag',

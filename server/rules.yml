@@ -1,0 +1,17 @@
+version: '1.0.0'
+rules:
+  - name: test_rule_1
+    record: A
+    type: dns.regex
+    config:
+      pattern: 'a'
+  - name: test_rule_2
+    record: A
+    type: dns.regex
+    config:
+      pattern: 'b'
+  - name: test_rule_1
+    record: '65530'
+    type: dns.regex
+    config:
+      pattern: 'a'

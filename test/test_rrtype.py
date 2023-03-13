@@ -48,3 +48,8 @@ def test_rrtype_eval_equals():
 
 def test_rrtype_eval_unknown():
     assert eval('RRType.of(65530)') == 65530, 'Did not produce int'
+
+
+def test_rrtype_to_str_and_repr():
+    assert repr(RRType.A) == 'A'
+    assert str(RRType.A) == 'A'

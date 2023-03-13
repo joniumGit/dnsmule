@@ -1,2 +1,4 @@
 fastapi
+uvicorn
 dnsmule
+dnsmule_plugins

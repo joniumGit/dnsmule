@@ -1,0 +1,18 @@
+**
+# DNSMule
+!setup.py
+!README.md
+!src/**
+src/*.egg-info
+# Rules
+!rules/README.md
+!rules/rules.yml
+!rules/rules-schema.yml
+# Plugins
+!plugins/src/**
+!plugins/README.md
+!plugins/setup.py
+plugins/src/*.egg-info
+# Server
+!server/server.py
+!server/requirements.txt

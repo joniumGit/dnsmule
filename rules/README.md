@@ -11,17 +11,19 @@ Rules support registration per DNS record type and priority for controlling invo
 ```yaml
 version: '0.0.1'
 rules:
-  - o365:
+  - name: o365
     priority: 10
     type: dns.regex
     record: txt
-    pattern: '^MS=ms'
-    identification: MICROSOFT::O365
-  - ses:
+    config:
+      pattern: '^MS=ms'
+      identification: MICROSOFT::O365
+  - name: ses
     type: dns.regex
     record: txt
-    pattern: '^amazonses:'
-    identification: AMAZON::SES
+    config:
+      pattern: '^amazonses:'
+      identification: AMAZON::SES
 ```
 
 #### Example
@@ -89,25 +91,27 @@ An example is in the following snippet:
 
 ```yml
 rules:
-  - test:
+  - name: test
     type: dns.regex
     record: txt
-    pattern: '^.*\.hello_world\.'
-    identification: HELLO::WORLD
-    flags:
-      - UNICODE
-      - DOTALL
-  - generic_verification:
+    config:
+      pattern: '^.*\.hello_world\.'
+      identification: HELLO::WORLD
+      flags:
+        - UNICODE
+        - DOTALL
+  - name: generic_verification
     type: dns.regex
     record: txt
     priority: 10
-    name: Generic Site Regex Collection
-    patterns:
-      - '^(.+)(?:-(?:site|domain))?-verification='
-      - '^(.+)(?:site|domain)verification'
-      - '^(.+)_verify_'
-      - '^(\w+)-code:'
-    group: 1
+    description: Generic Site Regex Collection
+    config:
+      patterns:
+        - '^(.+)(?:-(?:site|domain))?-verification='
+        - '^(.+)(?:site|domain)verification'
+        - '^(.+)_verify_'
+        - '^(\w+)-code:'
+      group: 1
 ```
 
 The full definition is available from the schema file.
@@ -154,7 +158,7 @@ def add_rule(
 The only globals passed to these methods are:
 
 - \_\_builtins\_\_
-- from dnsmule.definitions import RRType, Record, Result, Rule, DynamicRule
+- from dnsmule.definitions import RRType, Record, Result
 - add_rule
 - Any additional globals created by the code itself
 

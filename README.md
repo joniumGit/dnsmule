@@ -1,5 +1,7 @@
 # DNSMule
 
+[![codecov](https://codecov.io/gh/joniumGit/dnsmule/branch/master/graph/badge.svg?token=54DPREJIFU)](https://codecov.io/gh/joniumGit/dnsmule)
+
 Package for rule based dependency scanning and service fingerprinting via DNS.
 
 This package provides utilities for writing and evaluating verbose and easy to read rule definitions in _YAML_-format.

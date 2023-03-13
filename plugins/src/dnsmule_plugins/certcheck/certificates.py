@@ -1,6 +1,5 @@
 import datetime
 import socket
-import sys
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
@@ -172,13 +171,3 @@ __all__ = [
     'Certificate',
     'resolve_domain_from_certificate',
 ]
-
-if __name__ == '__main__':  # pragma: no cover
-    import json
-    import dataclasses
-
-    c1 = collect_certificate(sys.argv[1], 443)
-    c2 = collect_certificate(sys.argv[1], 443, prefer_stdlib=False)
-
-    print(json.dumps(dataclasses.asdict(c1), indent=4, default=str))
-    print(json.dumps(dataclasses.asdict(c2), indent=4, default=str))

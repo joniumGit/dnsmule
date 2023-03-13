@@ -1,7 +1,8 @@
 import datetime
+import socket
 import sys
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from dnsmule.config import get_logger
 
@@ -25,14 +26,20 @@ class Certificate:
         }
 
 
-def collect_certificate_cryptography(host: str, port: int, timeout: float):
+@dataclass
+class Address:
+    family: socket.AddressFamily
+    tuple: Tuple
+
+
+def collect_certificate_cryptography(address: Address, timeout: float):
     import ssl
     try:
         from cryptography.x509 import load_pem_x509_certificates
         from cryptography.x509.oid import NameOID
         from cryptography.x509.oid import ExtensionOID
         from cryptography.x509.extensions import SubjectAlternativeName, DNSName, ExtensionNotFound
-        cert = ssl.get_server_certificate((host, port), timeout=timeout)
+        cert = ssl.get_server_certificate(address.tuple[0:2], timeout=timeout)
         cert = load_pem_x509_certificates(cert.encode())[0]
         try:
             alts = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME).value
@@ -51,7 +58,11 @@ def collect_certificate_cryptography(host: str, port: int, timeout: float):
     except ImportError:
         pass
     except Exception as e:
-        get_logger().warning('CERTS-CRYPTOGRAPHY: Failed to get cert for %s:%s (%s)', host, port, type(e).__name__)
+        get_logger().warning(
+            'CERTS-CRYPTOGRAPHY: Failed to get cert for %s:%s (%s)',
+            *address.tuple[0:2],
+            type(e).__name__,
+        )
 
 
 def issuer_str(issuer):
@@ -94,29 +105,32 @@ def massage_certificate_stdlib(certificate):
         }
 
 
-def collect_certificate_stdlib(host: str, port: int, timeout: float):
+def collect_certificate_stdlib(address: Address, timeout: float):
     import ssl
     import socket
     try:
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as raw_socket:
+        with socket.socket(address.family, socket.SOCK_STREAM) as raw_socket:
             raw_socket.settimeout(timeout)
             with ctx.wrap_socket(raw_socket, do_handshake_on_connect=True) as s:
-                s.connect((host, port))
+                s.connect(address.tuple)
                 return massage_certificate_stdlib(s.getpeercert(binary_form=False))
     except Exception as e:
-        get_logger().warning('CERTS-STDLIB: Failed to get cert for %s:%s (%s)', host, port, type(e).__name__)
+        get_logger().warning(
+            'CERTS-STDLIB: Failed to get cert for %s:%s (%s)',
+            *address.tuple[0:2],
+            type(e).__name__,
+        )
 
 
 def collect_certificate(
-        host: str,
-        port: int,
+        address: Address,
         timeout: float = 1.,
         prefer_stdlib: bool = True,
 ) -> Optional[Certificate]:
     if prefer_stdlib:
-        cert = collect_certificate_stdlib(host, port, timeout)
+        cert = collect_certificate_stdlib(address, timeout)
     else:
         try:
             import cryptography
@@ -125,7 +139,7 @@ def collect_certificate(
             raise
         cert = None
     if not cert:
-        cert = collect_certificate_cryptography(host, port, timeout)
+        cert = collect_certificate_cryptography(address, timeout)
     return Certificate(**cert) if cert else None
 
 
@@ -134,13 +148,7 @@ def collect_certificates(host: str, port: int, **kwargs) -> List[Certificate]:
     out = []
     try:
         for family, _, _, _, info in socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP):
-            if family == socket.AF_INET:
-                address, _ = info
-            elif family == socket.AF_INET6:
-                address, _, _, _ = info
-            else:
-                continue
-            cert = collect_certificate(address, port, **kwargs)
+            cert = collect_certificate(Address(family=family, tuple=info), **kwargs)
             if cert:
                 out.append(cert)
     except socket.error:

@@ -1,8 +1,11 @@
+import socket
 from types import SimpleNamespace
 
 import pytest
 
 from dnsmule_plugins.certcheck import certificates
+
+EXAMPLE_ADDRESS = certificates.Address(family=socket.AF_INET, tuple=('example', 443))
 
 
 @pytest.mark.parametrize('cert,result', [
@@ -24,15 +27,15 @@ def test_certificates_collect_certificate_return(cert, result):
 
 
 def test_certificates_collect_certs_same_result():
-    c1 = certificates.collect_certificate('example.com', 443)
-    c2 = certificates.collect_certificate('example.com', 443, prefer_stdlib=False)
+    c1 = certificates.collect_certificate(EXAMPLE_ADDRESS)
+    c2 = certificates.collect_certificate(EXAMPLE_ADDRESS, prefer_stdlib=False)
     assert c1 == c2
 
 
 def test_certificates_collect_error_none():
-    c1 = certificates.collect_certificate_stdlib('example', 443, 1)
-    c2 = certificates.collect_certificate_cryptography('example', 443, 1)
-    c3 = certificates.collect_certificate('example', 443)
+    c1 = certificates.collect_certificate_stdlib(EXAMPLE_ADDRESS, 1)
+    c2 = certificates.collect_certificate_cryptography(EXAMPLE_ADDRESS, 1)
+    c3 = certificates.collect_certificate(EXAMPLE_ADDRESS)
     assert c1 is c2 is c3 is None
 
 
@@ -48,6 +51,6 @@ def test_certificates_import_failure(monkeypatch):
         m.setitem(sys.modules, 'cryptography', None)
 
         with pytest.raises(ImportError) as e:
-            certificates.collect_certificate('example.com', 443, prefer_stdlib=False)
+            certificates.collect_certificate(EXAMPLE_ADDRESS, prefer_stdlib=False)
 
     assert 'halted' in e.value.args[0]

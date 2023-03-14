@@ -39,6 +39,7 @@ class DictStorage(Storage):
         return str(item) in self._dict
 
     def __getitem__(self, key: Union[str, Domain]) -> Union[Result, None]:
+        key = str(key)
         if key in self:
             return self._dict[key]
 

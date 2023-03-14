@@ -176,3 +176,21 @@ def test_rules_has_rule():
     assert r.has_rule(1, 'a'), 'Failed to have rule for int'
     assert r.has_rule(RRType.A, 'a'), 'Failed to have rule for RRType'
     assert r.has_rule('RRType.of(1)', 'a'), 'Failed to have rule for RRType'
+
+
+@async_test
+async def test_rules_process_normal_rule_results_appended(rules):
+    class MockRule(Rule):
+
+        def __call__(self, record):
+            r = Result(record.domain)
+            r.data['hello'] = ['world']
+            return r
+
+    rules.add_rule(RRType.MX, MockRule())
+
+    record = Record(domain='example.com', data='', type=RRType.MX)
+    result = await rules.process_record(record)
+
+    assert result is record.result(), 'Did not get expected result'
+    assert result.data['hello'] == ['world'], 'Did not append new data'

@@ -46,7 +46,7 @@ def test_server_get_results_items(client, mule):
     )
     result.tags.add('test_tag')
     result['test_data'] = 1
-    mule.store_result(result)
+    mule.storage[result.domain] = result
 
     r = client.get('/results')
     assert r.status_code == 200, 'Failed to find results'

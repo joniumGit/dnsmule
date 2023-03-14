@@ -18,14 +18,17 @@ class Rules(Mapping[Union[int, RRType], List[Rule]], RuleFactoryMixIn):
         self._rules = defaultdict(list)
 
     async def process_record(self, record: Record) -> Result:
+        result = record.result()
         for r in self._rules.get(record.type, []):
             try:
                 t = r(record)
                 if hasattr(t, '__await__'):
-                    await t
+                    t = await t
+                if t:
+                    result += t
             except Exception as e:
                 self.log.error(f'Rule {r.name} raised an exception', exc_info=e)
-        return record.result()
+        return result
 
     def add_rule(self, rtype: Union[RRType, int, str], rule: Rule) -> None:
         rtype = RRType.from_any(rtype)

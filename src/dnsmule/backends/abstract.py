@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import AsyncGenerator, Any, Union
 
-from ..definitions import Domain, RRType, Result, Record
+from ..definitions import Domain, RRType, Record
 from ..rules import Rules
 
 
@@ -14,18 +14,18 @@ class Backend(ABC):
             if not k.startswith('_')
         })
 
-    async def run(self, rules: Rules, *targets: Union[str, Domain]) -> AsyncGenerator[Result, Any]:
+    async def run(self, rules: Rules, *targets: Union[str, Domain]) -> AsyncGenerator[Record, Any]:
         for target in targets:
-            async for result in self.run_single(rules, target):
-                yield result
+            async for record in self.run_single(rules, target):
+                yield record
 
-    async def run_single(self, rules: Rules, target: Union[str, Domain]) -> AsyncGenerator[Result, Any]:
+    async def run_single(self, rules: Rules, target: Union[str, Domain]) -> AsyncGenerator[Record, Any]:
         types = rules.get_types()
         async for record in self.process(
                 target if isinstance(target, Domain) else Domain(target),
                 *types
         ):
-            yield await rules.process_record(record)
+            yield record
 
     @abstractmethod
     def process(self, target: Domain, *types: RRType) -> AsyncGenerator[Record, Any]:

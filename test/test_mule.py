@@ -14,10 +14,10 @@ from dnsmule.rules import Rules, Rule
 
 
 class SimpleBackend(Backend):
-    o: Any
+    record_to_return: Any
 
     async def process(self, target: Domain, *types: RRType) -> AsyncGenerator[Record, Any]:
-        yield self.o
+        yield self.record_to_return
 
 
 def test_mule_load_simple():
@@ -133,15 +133,6 @@ def test_mule_append_rules():
     assert len(mule.rules) != 0, 'Rules still empty'
 
 
-def test_mule_add_result():
-    mule = DNSMule.make()
-    assert len(mule) == 0, 'Mule not empty on creation'
-    mule.store_result(Result(domain=Domain('a')))
-    assert len(mule) == 1, 'Mule did not store result'
-    mule.store_result(Result(domain=Domain('a')))
-    assert len(mule) == 1, 'Mule did not append result'
-
-
 @async_test
 async def test_mule_run_adds_domains():
     mule = DNSMule.make()
@@ -151,7 +142,7 @@ async def test_mule_run_adds_domains():
 
 
 @async_test
-async def test_mule_run_adds_domains():
+async def test_mule_run_adds_tags():
     rules = Rules()
 
     async def pass_transparent(o):
@@ -164,7 +155,7 @@ async def test_mule_run_adds_domains():
     r = Result(Domain('a'))
     r.tags.add('abcd')
 
-    mule.backend.o = r
+    mule.backend.record_to_return = r
 
     assert len(mule) == 0, 'Mule not empty on creation'
     await mule.run('a')
@@ -237,3 +228,37 @@ def test_mule_add_existing_plugin_does_not_call_init():
         storage=None,
     ))
     assert called_count[0] == 1, 'Called the plugin registration again'
+
+
+@async_test
+async def test_mule_run_persisting_result():
+    record = Record('a.com', RRType.TXT, 'abcd')
+    rules = Rules()
+
+    async def return_result(r):
+        new_result = Result(domain=r.domain)
+        if 'hello' not in r.result().data:
+            new_result.data['hello'] = ['world']
+        return new_result
+
+    rules.add_rule(RRType.TXT, Rule(f=return_result))
+    mule = DNSMule.make(rules, SimpleBackend())
+    mule.backend.record_to_return = record
+
+    result = Result(record.domain)
+    result.type.add(RRType.A)
+    result.tags.add('a')
+
+    mule.store_result(result)
+    assert mule[record.domain] is not None, 'Failed to store result'
+
+    await mule.run(record.domain)
+    await mule.run(record.domain)
+
+    stored_result = mule[record.domain]
+
+    assert stored_result is not result, 'Got the same result'
+
+    assert stored_result.tags == {'a'}, 'Failed to persist tag'
+    assert stored_result.data == {'hello': ['world']}, 'Failed to prevent duplicate data'
+    assert stored_result.type == {RRType.TXT, RRType.A}, 'Failed to add type'

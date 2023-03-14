@@ -93,10 +93,7 @@ class DNSMule(Mapping[Union[str, Domain], Result]):
         self._append_rules(cfg)
 
     def store_result(self, result: Result):
-        if result.domain in self.storage:
-            self.storage[result.domain] += result
-        else:
-            self.storage[result.domain] = result
+        self.storage[result.domain] = result
 
     def store_domains(self, *domains: str):
         for domain in domains:
@@ -118,7 +115,11 @@ class DNSMule(Mapping[Union[str, Domain], Result]):
 
     async def run(self, *domains: str):
         self.store_domains(*domains)
-        async for result in self.backend.run(self.rules, *domains):
+        async for record in self.backend.run(self.rules, *domains):
+            existing = self.storage[record.domain]
+            if existing:
+                record.result() + existing
+            result = await self.rules.process_record(record)
             self.store_result(result)
 
     def domains(self) -> List[str]:

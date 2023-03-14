@@ -37,9 +37,7 @@ class CertChecker(Rule):
                 )
             )
         domains = set()
-        issuers = set()
         for cert in certs:
-            issuers.add(cert.issuer)
             domains.update(certificates.resolve_domain_from_certificate(cert))
         domains = process_domains(*domains)
         existing_result = record.result()

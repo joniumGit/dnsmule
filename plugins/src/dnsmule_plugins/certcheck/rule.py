@@ -26,9 +26,9 @@ class CertChecker(Rule):
 
     def __call__(self, record: Record) -> Result:
         address: str = record.data.to_text()
-        certs = []
+        certs = set()
         for port in self.ports:
-            certs.extend(
+            certs.update(
                 certificates.collect_certificates(
                     address,
                     port=port,
@@ -42,14 +42,12 @@ class CertChecker(Rule):
             issuers.add(cert.issuer)
             domains.update(certificates.resolve_domain_from_certificate(cert))
         domains = process_domains(*domains)
-        result = record.result()
-
-        certs = [c.to_json() for c in certs]
-        if 'resolvedCertificates' not in result.data:
-            result.data['resolvedCertificates'] = certs
-        else:
-            result.data['resolvedCertificates'].extend(certs)
-
+        existing_result = record.result()
+        existing = set()
+        if 'resolvedCertificates' in existing_result.data:
+            existing.update(certificates.Certificate.from_json(d) for d in existing_result.data['resolvedCertificates'])
+        result = Result(existing_result.domain)
+        result.data['resolvedCertificates'] = [c.to_json() for c in certs if c not in existing]
         if self.callback:
             self._callback(domains)
         return result

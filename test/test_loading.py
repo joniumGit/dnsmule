@@ -5,6 +5,7 @@ import pytest
 from dnsmule.backends.noop import NOOPBackend
 from dnsmule.loader import load_config, make_backend, make_plugins, make_rules, import_class
 from dnsmule.plugins.noop import NOOPPlugin
+from dnsmule.storage.dictstorage import DictStorage
 
 
 def test_loading_empty_rules():
@@ -21,8 +22,13 @@ def test_loading_backend():
 
 
 def test_loading_plugin():
-    cfg = load_config(Path(__file__).parent / 'sample_1.yml', backend=False, plugins=True, rules=False)
+    cfg = load_config(Path(__file__).parent / 'sample_1.yml')
     assert type(cfg.plugins[0]()) == NOOPPlugin, 'Failed plugin import'
+
+
+def test_loading_storage():
+    cfg = load_config(Path(__file__).parent / 'sample_1.yml')
+    assert type(cfg.storage()) == DictStorage, 'Failed storage import'
 
 
 def test_loading_false_is_none():

@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from dnsmule import DNSMule
 from dnsmule.definitions import Result, Domain, RRType
+from dnsmule.storage import ResultMapper
 from server import app
 
 test_rules = Path(__file__).parent / 'rules.yml'
@@ -51,7 +52,7 @@ def test_server_get_results_items(client, mule):
     assert r.status_code == 200, 'Failed to find results'
     assert r.json() == {
         'results': [
-            result.to_json(),
+            ResultMapper.to_json(result),
         ]
     }, 'Result output was different'
 

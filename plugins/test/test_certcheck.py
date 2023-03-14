@@ -55,8 +55,13 @@ def test_certcheck_call_add_domains(mock_collection):
 
     r.result()['resolvedCertificates'] = [cert1.to_json()]
     mock_collection.append(cert2)
+    mock_collection.append(cert1)
 
-    assert check(r)['resolvedCertificates'] == [cert1.to_json(), cert2.to_json()], 'Failed to append data'
+    result = check(r)
+    certs = result['resolvedCertificates']
+    assert len((check(r) + r.result()).data['resolvedCertificates']) == 2, 'Failed to remove duplicates'
+    assert cert1.to_json() not in certs, 'Appended existing data'
+    assert cert2.to_json() in certs, 'Failed to append data'
 
 
 def test_certcheck_callback_with_domains(mock_collection):

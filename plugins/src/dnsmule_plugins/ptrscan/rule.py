@@ -8,7 +8,7 @@ from dns.rdtypes.IN import A
 
 from dnsmule.backends.dnspython import DNSPythonBackend
 from dnsmule.config import get_logger
-from dnsmule.definitions import Record
+from dnsmule.definitions import Record, Result
 from dnsmule.rules import Rule
 
 
@@ -49,15 +49,19 @@ class PTRScan(Rule):
             )
         return out
 
-    async def __call__(self, record: Record):
+    async def __call__(self, record: Record) -> Result:
         og: A = record.data.data['original']
         records = await self.query_records(reverse_query.from_address(og.to_text()), RdataType.PTR)
         if RdataType.PTR in records:
             for r in records[RdataType.PTR]:
                 get_logger().info('PTR %s', r.to_text())
-            data: dict = record.result().data
+            result = Result(domain=record.domain)
             ptrs = [r.to_text() for r in records[RdataType.PTR]]
-            data['resolvedPointers'] = ptrs
+            existing_result = record.result()
+            existing = set()
+            if 'resolvedPointers' in existing_result.data:
+                existing.update(existing_result.data['resolvedPointers'])
+            result.data['resolvedPointers'] = [p for p in ptrs if p not in existing]
             ptr_patterns = [
                 '-'.join(reversed(og.address.split('.'))),
                 '.'.join(reversed(og.address.split('.'))),
@@ -73,6 +77,7 @@ class PTRScan(Rule):
                             _id = ptr.partition(pattern)[2]
                         record.identify(f'IP:PTR::{self.name.upper()}::{_id.strip(".").upper()}')
                         break
+            return result
 
 
 __all__ = [

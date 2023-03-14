@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Set
+from typing import Dict, Set, Union
 
 from .domain import Domain
 from .rrtype import RRType
@@ -8,17 +8,17 @@ from ..utils import lmerge
 
 @dataclass(slots=True, init=False, frozen=False)
 class Result:
-    domain: Domain
+    domain: str
     type: Set[RRType]
     tags: Set[str]
     data: Dict
 
     # noinspection PyShadowingBuiltins
-    def __init__(self, domain: Domain, type: RRType = None):
+    def __init__(self, domain: Union[Domain, str], type: RRType = None):
         self.type = set()
         if type:
             self.type.add(type)
-        self.domain = domain
+        self.domain = domain.name if isinstance(domain, Domain) else domain
         self.tags = set()
         self.data = {}
 
@@ -56,17 +56,6 @@ class Result:
 
     def __iter__(self):
         return iter(self.tags)
-
-    def to_json(self):
-        return {
-            'domain': self.domain.name,
-            'type': [
-                str(t)
-                for t in map(RRType.from_any, sorted(self.type))
-            ],
-            'tags': [*self.tags],
-            'data': self.data
-        }
 
 
 __all__ = [

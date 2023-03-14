@@ -48,7 +48,11 @@ setup(
         'dev': [
             'pytest',
             'pytest-cov',
-        ]
+            'redis',
+        ],
+        'redis': [
+            'redis',
+        ],
     },
     project_urls={
         'Bug Reports': f'{repo}/issues',

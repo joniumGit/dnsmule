@@ -34,9 +34,11 @@ def test_mule_with_existing_backend_and_rules():
 
 def test_mule_with_existing_backend_and_rules_from_file():
     rules = Rules()
-    mule = DNSMule(file=Path(__file__).parent / 'sample_1.yml', rules=rules, backend=SimpleBackend())
+    storage = object()
+    mule = DNSMule(file=Path(__file__).parent / 'sample_1.yml', rules=rules, backend=SimpleBackend(), storage=storage)
     assert type(mule.backend) == SimpleBackend, 'Failed to persist backend'
     assert mule.rules is rules, 'Failed to persist rules'
+    assert mule.storage is storage, 'Failed to persist storage'
 
 
 def test_mule_nones():
@@ -79,21 +81,21 @@ async def test_mule_context_manager():
 
 
 def test_mule_len_data():
-    mule = DNSMule.make(Rules(), NOOPBackend())
+    mule = DNSMule.make()
     assert len(mule) == 0, 'Was not 0 len at creation'
     mule.store_domains('a', 'b')
     assert len(mule) == 2, 'Was not length of domains'
 
 
 def test_mule_domains_sorted():
-    mule = DNSMule.make(Rules(), NOOPBackend())
+    mule = DNSMule.make()
     mule.store_domains('c', 'g')
     mule.store_domains('a', 'e')
     assert mule.domains() == ['a', 'c', 'e', 'g'], 'Failed to generate domains ordered'
 
 
 def test_mule_contains_domain_and_str():
-    mule = DNSMule.make(Rules(), NOOPBackend())
+    mule = DNSMule.make()
     mule.store_domains('a')
     assert 'b' not in mule, 'Returned True for data that does not exist'
     assert 'a' in mule, 'Did not contain data'
@@ -101,12 +103,12 @@ def test_mule_contains_domain_and_str():
 
 
 def test_mule_getitem_no_data():
-    data = DNSMule.make(Rules(), NOOPBackend())['abg']
+    data = DNSMule.make()['abg']
     assert data is None, 'Returned something from key that does not exist'
 
 
 def test_mule_getitem_with_data():
-    mule = DNSMule.make(Rules(), NOOPBackend())
+    mule = DNSMule.make()
     mule.store_domains('a')
 
     result = mule['a']
@@ -117,7 +119,7 @@ def test_mule_getitem_with_data():
 
 
 def test_mule_store_same_domain_same_length():
-    mule = DNSMule.make(Rules(), NOOPBackend())
+    mule = DNSMule.make()
     mule.store_domains('a')
     assert len(mule) == 1, 'Failed to add domain'
     mule.store_domains('a')
@@ -125,14 +127,14 @@ def test_mule_store_same_domain_same_length():
 
 
 def test_mule_append_rules():
-    mule = DNSMule.make(Rules(), NOOPBackend())
+    mule = DNSMule.make()
     assert len(mule.rules) == 0, 'Rules not empty'
     mule.append_config(Path(__file__).parent / 'sample_2.yml')
     assert len(mule.rules) != 0, 'Rules still empty'
 
 
 def test_mule_add_result():
-    mule = DNSMule.make(Rules(), NOOPBackend())
+    mule = DNSMule.make()
     assert len(mule) == 0, 'Mule not empty on creation'
     mule.store_result(Result(domain=Domain('a')))
     assert len(mule) == 1, 'Mule did not store result'
@@ -142,7 +144,7 @@ def test_mule_add_result():
 
 @async_test
 async def test_mule_run_adds_domains():
-    mule = DNSMule.make(Rules(), NOOPBackend())
+    mule = DNSMule.make()
     assert len(mule) == 0, 'Mule not empty on creation'
     await mule.run('a')
     assert len(mule) == 1, 'Mule did not store domain'
@@ -172,33 +174,43 @@ async def test_mule_run_adds_domains():
 
 
 def test_mule_duplicate_rule_throws():
-    m = DNSMule.make(Rules(), SimpleBackend())
+    m = DNSMule.make()
     m.rules.add_rule(RRType.TXT, Rule(lambda: None, name='regex_test'))
     with pytest.raises(ValueError):
         m.append_config(Path(__file__).parent / 'sample_2.yml')
 
 
 def test_mule_duplicate_rule_name_different_record_ok():
-    m = DNSMule.make(Rules(), SimpleBackend())
+    m = DNSMule.make()
     m.rules.add_rule(65535, Rule(lambda: None, name='regex_test'))
     m.append_config(Path(__file__).parent / 'sample_2.yml')
     assert sum(map(len, m.rules.values())) == 2, 'Did not match rule count'
 
 
 def test_mule_add_rule_with_existing_record_ok():
-    m = DNSMule.make(Rules(), SimpleBackend())
+    m = DNSMule.make()
     m.rules.add_rule(RRType.TXT, Rule(lambda: None, name='regex_test_2'))
     m.append_config(Path(__file__).parent / 'sample_2.yml')
     assert sum(map(len, m.rules.values())) == 2, 'Did not match rule count'
 
 
 def test_mule_backend_type_name():
-    m = DNSMule.make(Rules(), SimpleBackend())
+    m = DNSMule.make(backend=SimpleBackend())
     assert m.backend_type == 'SimpleBackend', 'Failed to get type name for backend'
 
 
+def test_mule_make_persists_objects():
+    rules = object()
+    backend = object()
+    storage = object()
+    m = DNSMule.make(rules, backend, storage)
+    assert m.rules is rules, 'Failed to persist rules'
+    assert m.backend is backend, 'Failed to persist backend'
+    assert m.storage is storage, 'Failed to persist storage'
+
+
 def test_mule_add_existing_plugin_does_not_call_init():
-    m = DNSMule.make(Rules(), SimpleBackend())
+    m = DNSMule.make()
     called_count = [0]
 
     class FalseNoopPlugin(NOOPPlugin):
@@ -209,9 +221,19 @@ def test_mule_add_existing_plugin_does_not_call_init():
         def register(self, _):
             called_count[0] += 1
 
-    m._append_plugins(Config(plugins=[Initializer(type='noop', f=FalseNoopPlugin)], backend=None, rules=None))
+    m._append_plugins(Config(
+        plugins=[Initializer(type='noop', f=FalseNoopPlugin)],
+        backend=None,
+        rules=None,
+        storage=None,
+    ))
     assert 'noop' in m.plugins, 'Did not add plugin'
     assert called_count[0] == 1, 'Did not call register'
 
-    m._append_plugins(Config(plugins=[Initializer(type='noop', f=FalseNoopPlugin)], backend=None, rules=None))
+    m._append_plugins(Config(
+        plugins=[Initializer(type='noop', f=FalseNoopPlugin)],
+        backend=None,
+        rules=None,
+        storage=None,
+    ))
     assert called_count[0] == 1, 'Called the plugin registration again'

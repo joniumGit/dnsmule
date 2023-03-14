@@ -98,33 +98,6 @@ def test_result_add_other_type_raises():
         r1 + ''
 
 
-def test_result_to_dict():
-    r1 = Result(type=RRType.A, domain=Domain('a'))
-    r1.type.add(RRType.TXT)
-    r1.type.add(RRType.of(65530))
-    r1['test'] = [100]
-    r1['test2'] = {1}
-    r1.tags.add('test-tag')
-
-    assert r1.to_json() == {
-        'domain': r1.domain.name,
-        'type': [
-            'A',
-            'TXT',
-            '65530',
-        ],
-        'tags': [
-            'test-tag',
-        ],
-        'data': {
-            'test': [
-                100,
-            ],
-            'test2': {1}
-        }
-    }
-
-
 def test_result_empty_type():
     r = Result(Domain('a'))
     assert r.type == set(), 'Result created with default type'
@@ -141,3 +114,9 @@ def test_result_len_iter():
     r.tags.add('b')
     assert len(r) == 2, 'Result did not have a  length'
     assert {*r} == {'a', 'b'}, 'Result did not have tags from iter'
+
+
+def test_result_str_domain():
+    r1 = Result(Domain('a'))
+    r2 = Result('a')
+    assert type(r1.domain) == type(r2.domain), 'Failed to match'

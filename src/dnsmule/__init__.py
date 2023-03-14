@@ -4,4 +4,4 @@ from .mule import DNSMule
 from .plugins import Plugin
 from .rules import Rules, DynamicRule, RegexRule, Rule
 
-__version__ = '0.1.0-post1'
+__version__ = '0.2.0'

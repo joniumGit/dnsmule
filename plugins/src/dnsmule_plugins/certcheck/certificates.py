@@ -6,7 +6,7 @@ from typing import List, Optional, Tuple
 from dnsmule.config import get_logger
 
 
-@dataclass(frozen=True, unsafe_hash=True, eq=True)
+@dataclass(frozen=True, eq=True)
 class Certificate:
     version: str
     common: str
@@ -15,14 +15,26 @@ class Certificate:
     valid_until: datetime.datetime
     valid_from: datetime.datetime
 
+    def __hash__(self):
+        return hash(self.common)
+
     def to_json(self):
         from dataclasses import asdict
         data = asdict(self)
         return {
-            'valid_until': data.pop('valid_until').isoformat(),
-            'valid_from': data.pop('valid_from').isoformat(),
             **data,
+            'valid_until': data['valid_until'].isoformat(),
+            'valid_from': data['valid_from'].isoformat(),
         }
+
+    @classmethod
+    def from_json(cls, data):
+        data = {
+            **data,
+            'valid_until': datetime.datetime.fromisoformat(data['valid_until']),
+            'valid_from': datetime.datetime.fromisoformat(data['valid_from']),
+        }
+        return cls(**data)
 
 
 @dataclass

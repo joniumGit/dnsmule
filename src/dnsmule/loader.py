@@ -10,6 +10,8 @@ from .definitions import RRType
 from .plugins import Plugin
 from .rules import Rules, DynamicRule
 from .rules.entities import RuleFactory
+from .storage import Storage
+from .storage.dictstorage import DictStorage
 
 T = TypeVar('T')
 
@@ -28,6 +30,7 @@ class Config:
     rules: Optional[Initializer[Rules]]
     backend: Optional[Initializer[Backend]]
     plugins: Optional[List[Initializer[Plugin]]]
+    storage: Optional[Initializer[Storage]]
 
 
 def load_and_append_rule(
@@ -90,6 +93,27 @@ def import_class(import_string: str, parent: Type[T], relative: bool = True, pac
         return cls
 
 
+def import_full(
+        name: str,
+        cls: Type[T],
+        package: str,
+) -> Type[T]:
+    """Helper for imports
+    """
+    try:
+        result = import_class(name, cls, relative=True, package=package)
+    except ImportError as e:
+        try:
+            result = import_class(name, cls, relative=False)
+        except ImportError as ex:
+            raise ex from e
+        except AttributeError as ex:
+            raise ImportError from ex
+    except AttributeError as e:
+        raise ImportError from e
+    return result
+
+
 def make_backend(document: Dict[str, Any]) -> Initializer[Backend]:
     """Loads backend from yaml config
     """
@@ -97,18 +121,7 @@ def make_backend(document: Dict[str, Any]) -> Initializer[Backend]:
     if backend:
         backend_type = backend['name']
         backend_config = backend.get('config', {})
-        try:
-            backend_class = import_class(backend_type, Backend, relative=True, package='dnsmule.backends')
-        except ImportError as e:
-            try:
-                backend_class = import_class(backend_type, Backend, relative=False)
-            except ImportError as ex:
-                raise ex from e
-            except AttributeError as ex:
-                raise ImportError from ex
-        except AttributeError as e:
-            raise ImportError from e
-
+        backend_class = import_full(backend_type, Backend, 'dnsmule.backends')
         return Initializer(type=backend_type, f=partial(backend_class, **backend_config))
     else:
         return Initializer(type=NOOPBackend.__name__, f=NOOPBackend)
@@ -137,11 +150,22 @@ def make_plugins(document: Dict[str, Any]) -> List[Initializer[Plugin]]:
     return out
 
 
+def make_storage(document: Dict[str, Any]) -> Initializer[Storage]:
+    storage = document.get('storage', {})
+    if storage:
+        storage_type = storage['name']
+        storage_class = import_full(storage_type, Storage, 'dnsmule.storage')
+        return Initializer(type=storage_type, f=partial(storage_class, **storage.get('config', {})))
+    else:
+        return Initializer(type='DictStorage', f=DictStorage)
+
+
 def load_config(
         file: Union[str, Path],
         rules: bool = True,
         backend: bool = True,
         plugins: bool = True,
+        storage: bool = True,
 ) -> Config:
     """Loads a yaml config
     """
@@ -152,6 +176,7 @@ def load_config(
             plugins=make_plugins(document) if plugins else None,
             backend=make_backend(document) if backend else None,
             rules=make_rules(document) if rules else None,
+            storage=make_storage(document) if storage else None,
         )
 
 

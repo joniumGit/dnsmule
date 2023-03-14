@@ -9,6 +9,8 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, validator, ValidationError, Extra
 
 from dnsmule import DNSMule, RRType, __version__
+from dnsmule.config import get_logger
+from dnsmule.storage import ResultMapper
 
 app = FastAPI(
     default_response_class=Response,
@@ -44,14 +46,24 @@ def get_mule() -> DNSMule:
     return app.state.mule
 
 
+def get_backend():  # pragma: nocover this will be removed
+    try:
+        from dnsmule.storage.redisstorage import RedisStorage
+        driver = RedisStorage(host='127.0.0.1')
+        driver.get_client().ping()
+        get_logger().info('Using redis storage')
+    except Exception as e:
+        get_logger().error('Failed to use redis storage', exc_info=e)
+        from dnsmule.storage.dictstorage import DictStorage
+        driver = DictStorage()
+    return driver
+
+
 @app.on_event('startup')
 def startup():
-    from dnsmule.config import get_logger
-
     get_logger().addHandler(StreamHandler())
     get_logger().setLevel(INFO)
-
-    mule = DNSMule(file=rules)
+    mule = DNSMule(file=rules, storage=get_backend())
     app.state.mule = mule
 
 
@@ -282,13 +294,13 @@ async def scan_domain(tasks: BackgroundTasks, domain: str = domain_query(), mule
 def get_domain(domain: str = domain_query(None), mule: DNSMule = Depends(get_mule)):
     if domain:
         if domain in mule:
-            return mule[domain].to_json()
+            return ResultMapper.to_json(mule[domain])
         else:
             return Response(status_code=404)
     else:
         return {
             'results': [
-                result.to_json()
+                ResultMapper.to_json(result)
                 for result in mule.values()
             ]
         }
@@ -483,9 +495,13 @@ def get_plugins(mule: DNSMule = Depends(get_mule)):
 
 if __name__ == '__main__':  # pragma: nocover
     import uvicorn
+    import argparse
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--workers', default=1, type=int)
+    args = parser.parse_args()
     uvicorn.run(
         'server:app',
-        reload_dirs=str(Path(__file__).parent),
-        reload=True,
+        reload=False,
+        workers=args.workers,
     )

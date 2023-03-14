@@ -1,6 +1,8 @@
 version: '1.0.0'
 backend:
   name: 'noop.NOOPBackend'
+storage:
+  name: 'dictstorage.DictStorage'
 plugins:
   - name: dnsmule.plugins.noop.NOOPPlugin
     config:

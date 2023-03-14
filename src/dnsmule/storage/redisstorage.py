@@ -27,7 +27,11 @@ class RedisStorage(Storage):
     def __setitem__(self, key: Union[str, Domain], value: Union[Result, None]):
         self._client.set(
             f'DNSMULE::RESULT::{str(key)}',
-            json.dumps(ResultMapper.to_json(value), default=repr)
+            json.dumps(
+                ResultMapper.to_json(value),
+                default=repr,
+                ensure_ascii=False,
+            )
             if value is not None else
             '',
         )

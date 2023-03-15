@@ -52,7 +52,7 @@ async def test_ranges_rule_fetching_failure_cancels_tasks():
     r = rule.IpRangeChecker(providers=[])
     r.providers = ['a', 'b']  # Prevents throw on init
 
-    async def fetch_provider(key):
+    def fetch_provider(key):
         if key == 'b':
             raise ValueError()
 

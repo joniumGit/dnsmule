@@ -20,6 +20,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      FETCH_RANGES: ${{ vars.FETCH_RANGES }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4

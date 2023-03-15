@@ -1,34 +1,10 @@
 # Miscellaneous Scripts
 
-These will all be removed most likely.
-
-#### Analyze FI domains from a file and DNS:
-
-Analyzes a list of domains for `*.fi` domains and fetches data about them from DNS.
-
-> python analyze.py -h
-
-```text
-usage: analyze.py [-h] [--sub-domain-count SDC] --limit LIMIT [--skip-dump] FILE RULES
-
-positional arguments:
-  FILE RULES
-
-options:
-  -h, --help                        (Help)
-  --sub-domain-count SDC, -sdc SDC  (Shows common subdomains greater than this)
-  --limit LIMIT, -n LIMIT           (Limit to n first records)
-  --skip-dump                       (Skips interactive prompt for dumping records)
-  --all                             (Doesn't limit analyzing to subdomains)
-```
-
-> python analyze.py -sdc 10 -n -1 --all --skip-dump umbrella-top-1m.csv rules/rules.yml
+These are subject to removal at any point.
 
 #### Analyze most common subdomains
 
 Analyzes a list of domains for most common subdomain entries.
-
-> python dstat.py -h
 
 ```text
 usage: dstat.py [-h] [-n N] FILE
@@ -36,11 +12,11 @@ usage: dstat.py [-h] [-n N] FILE
 Lists top domains and top first subdomains
 
 positional arguments:
-  FILE             Input file
+  FILE             input domain file (txt or csv[id, value])
 
 options:
   -h, --help       show this help message and exit
-  -n N, --limit N  Limit to top n-entries
+  -n N, --limit N  limit the outputs to top-n entries
 ```
 
 ```text
@@ -73,6 +49,42 @@ Top sub-domains
 9         4595 fls
 ```
 
+#### Post data to server from file
+
+Requires `httpx` library.
+
+```
+usage: post_to_server.py [-h] [--host HOST] [--port PORT] [--https] [--skip SKIP] [--delay DELAY] [--suffix SUFFIX] file
+
+positional arguments:
+  file             input domain file (txt or csv[id, value])
+
+options:
+  -h, --help       show this help message and exit
+  --host HOST      server host
+  --port PORT      server port
+  --https          use https
+  --skip SKIP      skip n records
+  --delay DELAY    send delay in ms
+  --suffix SUFFIX  suffix to filter domains by
+```
+
 #### Create Resource Record types
 
 The script `create_rr_types.py` creates the `rrtype.py` file in DNSMule.
+
+#### De-duplicate data in redis
+
+The script `deduplicate_redis.py` connects to a local redis and fixes duplicates from `certcheck` and `ptrscan`.
+
+#### Install Certificates
+
+Copied from standard python install on macOS.
+
+#### Debug IPRanges
+
+Prints all ipranges used by the `ipranges` plugin.
+
+#### Fetch cert
+
+Fetches certificate from domain in both encoded and python tuples modes

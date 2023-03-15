@@ -1,35 +1,60 @@
-from typing import Iterable, TypeVar, Tuple, Callable, Literal
+from collections import Counter, deque
+from typing import Iterable, TypeVar, Tuple, Callable, Hashable
 
 T = TypeVar('T')
 R = TypeVar('R')
+H = TypeVar('H', bound=Hashable)
+
+
+def select_second(from_tuple: Tuple[T, R]) -> R:
+    return from_tuple[1]
 
 
 def limit(iterable: Iterable[T], *, n: int) -> Iterable[T]:
-    for _, i in zip(range(n), iterable):
-        yield i
-
-
-def sort_by_item_value(item: Tuple[T, R]) -> R:
-    return item[1]
+    return map(select_second, zip(range(n), iterable))
 
 
 def count_by(
         iterable: Iterable[T],
         f: Callable[[T], R],
-        order: Literal['asc', 'desc'] = 'desc',
+        n: int = None,
 ) -> Iterable[Tuple[R, int]]:
-    reverse = order == 'desc'
-    counts = {}
-    for o in iterable:
-        key = f(o)
-        if key in counts:
-            counts[key] += 1
+    return iter(Counter(map(f, iterable)).most_common(n=n))
+
+
+def lagging_filter(lag: int):
+    values = set()
+    latest = deque()
+
+    if lag <= 0:
+        raise ValueError('Invalid lag value')
+
+    def filter_function(item):
+        if item not in values:
+            if len(values) >= lag:
+                values.remove(latest.popleft())
+            latest.append(item)
+            values.add(item)
+            return True
         else:
-            counts[key] = 1
-    yield from sorted(counts.items(), key=sort_by_item_value, reverse=reverse)
+            return False
+
+    return filter_function
+
+
+def filter_locally_unique(iterable: Iterable[H], *, lag: int) -> Iterable[H]:
+    """Filters iterable to produce locally unique values
+
+    This could be useful for removing duplicate values from a very long,
+    but relatively sorted iterable.
+
+    Requires the iterable values to be hashable.
+    """
+    return filter(lagging_filter(lag), iterable)
 
 
 __all__ = [
     'limit',
     'count_by',
+    'filter_locally_unique',
 ]

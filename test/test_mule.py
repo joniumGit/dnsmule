@@ -230,6 +230,27 @@ def test_mule_add_existing_plugin_does_not_call_init():
     assert called_count[0] == 1, 'Called the plugin registration again'
 
 
+def test_mule_add_raising_plugin_does_not_fail():
+    m = DNSMule.make()
+
+    class FalseNoopPlugin(NOOPPlugin):
+        @property
+        def type(self):
+            return type(self).__name__
+
+        def register(self, _):
+            raise ValueError()
+
+    m._append_plugins(Config(
+        plugins=[Initializer(type='noop', f=FalseNoopPlugin)],
+        backend=None,
+        rules=None,
+        storage=None,
+    ))
+
+    assert 'noop' not in m.plugins, 'Added plugin'
+
+
 @async_test
 async def test_mule_run_persisting_result():
     record = Record('a.com', RRType.TXT, 'abcd')

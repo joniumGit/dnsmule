@@ -3,6 +3,7 @@ import pathlib
 import pytest
 
 from dnsmule.utils import *
+from dnsmule.utils import domain_utils
 
 
 @pytest.mark.parametrize('file', [
@@ -80,48 +81,16 @@ def test_utils_lmerge_incompatible_types():
     )
 ])
 def test_utils_process_domains(value, result):
-    assert set(process_domains(*value)) == set(result), 'Unexpected result'
+    assert set(process_domains(value)) == set(result), 'Unexpected result'
 
 
-@pytest.mark.parametrize('value,result,suffix', [
-    (
-            ['a.b', 'a.a.b', 'a.e'],
-            {
-                'a.b': {'a.b', 'a.a.b'},
-                'a.e': {'a.e'},
-            },
-            None,
-    ),
-    (
-            ['a.b', 'a.a.b', '*.a.b', 'a.b', 'b.c.e'],
-            {
-                'a.b': {
-                    'a.b',
-                    'a.a.b',
-                    '*.a.b',
-                }
-            },
-            '.b',
-    )
-])
-def test_utils_group_domains(value, result, suffix):
-    assert group_domains(value, suffix=suffix) == result, 'Unexpected result'
-    assert group_domains_filtered_by(suffix, value) == result, 'Unexpected result'
+def test_utils_spread_domain_skips_tld():
+    assert [*domain_utils.spread_domain('.fi')] == [], 'Failed to skip TLD'
 
 
-def test_most_common_subdomains():
-    assert [*generate_most_common_subdomains(
-        {
-            'a.b': [
-                'a.b',
-                'a.a.b',  # Counted
-                'c.a.b',
-                'a.a.b',
-            ],
-            'b.b.': {
-                'a.b',
-                'a.b.b',  # Counted
-            }
-        },
-        1
-    )] == [('a', 2)]
+def test_utils_spread_domain_short():
+    assert [*domain_utils.spread_domain('a.fi')] == ['a.fi'], 'Failed to short'
+
+
+def test_utils_spread_domain():
+    assert [*domain_utils.spread_domain('a.b.c.fi')] == ['c.fi', 'b.c.fi', 'a.b.c.fi'], 'Failed to produce all domains'

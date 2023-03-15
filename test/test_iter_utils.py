@@ -16,8 +16,7 @@ def test_iter_utils_iter_limit_exact_iter():
 
 
 def test_iter_utils_sorter_return_item_value():
-    # These are dict.items()
-    assert iter_utils.sort_by_item_value(('key', 'value')) == 'value', 'Did not extract value from item'
+    assert iter_utils.select_second(('key', 'value')) == 'value', 'Did not extract value from item'
 
 
 @pytest.mark.parametrize('iterable,mapper,counts', [
@@ -50,22 +49,56 @@ def test_iter_utils_count_by_function(iterable, mapper, counts):
     assert dict(iter_utils.count_by(iterable, mapper)) == counts, 'Unexpected counts output'
 
 
-@pytest.mark.parametrize('reverse', (True, False))
-def test_iter_utils_count_by_order(reverse):
+def test_iter_utils_count_by_limit():
     for value, expected in zip(
-            sorted(
-                [
-                    ('a', 3),
-                    ('b', 2),
-                    ('c', 1),
-                ],
-                key=lambda t: t[1],
-                reverse=reverse
-            ),
+            [
+                ('a', 3),
+                ('b', 2),
+            ],
             iter_utils.count_by(
                 ['aa', 'bb', 'ab', 'ad', 'bc', 'ce'],
                 lambda o: o[0],
-                order='desc' if reverse else 'asc'
+                n=2,
             )
     ):
         assert value == expected, 'Unexpected order'
+
+
+@pytest.mark.parametrize('i,lag,result', [
+    (
+            ['a', 'a', 'a', 'b', 'b'],
+            1,
+            ['a', 'b'],
+    ),
+    (
+            ['a', 'b', 'c', 'a', 'b', 'c'],
+            3,
+            ['a', 'b', 'c'],
+    ),
+    (
+            ['a', 'b', 'c', 'd', 'a', 'b', 'c', 'd'],
+            3,
+            ['a', 'b', 'c', 'd', 'a', 'b', 'c', 'd'],
+    ),
+    (
+            ['a', 'b', 'c', 'd', 'a', 'b', 'c', 'd'],
+            2,
+            ['a', 'b', 'c', 'd', 'a', 'b', 'c', 'd'],
+    ),
+    (
+            ['a', 'b', 'c', 'd', 'a', 'a', 'b', 'b'],
+            2,
+            ['a', 'b', 'c', 'd', 'a', 'b'],
+    ),
+])
+def test_iter_utils_lagging_filter(i, lag, result):
+    assert [*iter_utils.filter_locally_unique(i, lag=lag)] == result, 'Did not filter'
+
+
+@pytest.mark.parametrize('lag', [
+    0,
+    -1,
+])
+def test_iter_utils_lagging_filter_value_error(lag):
+    with pytest.raises(ValueError):
+        iter_utils.lagging_filter(lag)

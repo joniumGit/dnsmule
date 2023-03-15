@@ -17,3 +17,4 @@ __service_cache__
 dist
 **/dist
 !server/requirements.txt
+build

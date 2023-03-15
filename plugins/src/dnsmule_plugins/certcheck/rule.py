@@ -12,7 +12,7 @@ class CertChecker(Rule):
     stdlib: bool = False
     callback: bool = False
 
-    _callback: Callable[[Collection[str]], None]
+    _callback: Callable[[str, ...], None]
 
     @staticmethod
     def creator(callback: Callable[[Collection[str]], None]):
@@ -36,10 +36,11 @@ class CertChecker(Rule):
                     prefer_stdlib=self.stdlib,
                 )
             )
-        domains = set()
-        for cert in certs:
-            domains.update(certificates.resolve_domain_from_certificate(cert))
-        domains = process_domains(*domains)
+        domains = [*process_domains(
+            domain
+            for cert in certs
+            for domain in certificates.resolve_domain_from_certificate(cert)
+        )]
         existing_result = record.result()
         existing = set()
         if 'resolvedCertificates' in existing_result.data:
@@ -47,7 +48,7 @@ class CertChecker(Rule):
         result = Result(existing_result.domain)
         result.data['resolvedCertificates'] = [c.to_json() for c in certs if c not in existing]
         if self.callback:
-            self._callback(domains)
+            self._callback(*domains)
         return result
 
 

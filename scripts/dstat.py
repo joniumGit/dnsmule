@@ -33,7 +33,7 @@ Creates a list of top domains from a file::
 from argparse import ArgumentParser
 from typing import List
 
-from dnsmule.utils import limit, count_by, load_data
+from dnsmule.utils import count_by, load_data
 
 
 def main(file_lines: List[str], n: int = 10):
@@ -42,18 +42,20 @@ def main(file_lines: List[str], n: int = 10):
 
     print()
     print('Top domains')
-    for idx, (domain, count) in enumerate(limit(count_by(
+    for idx, (domain, count) in enumerate(count_by(
             file_lines,
-            lambda e: '.'.join(e.split('.')[-2:])
-    ), n=n)):
+            lambda e: '.'.join(e.split('.')[-2:]),
+            n=n,
+    )):
         print(f'{idx: <5d} {count: >8d}', domain)
 
     print()
     print('Top sub-domains')
-    for idx, (domain, count) in enumerate(limit(count_by(
-            filter(lambda o: o.count('.') >= 3, file_lines),
-            lambda e: e.split('.')[-3]
-    ), n=n)):
+    for idx, (domain, count) in enumerate(count_by(
+            filter(lambda o: o.count('.') > 2, file_lines),
+            lambda e: e.split('.')[-3],
+            n=n,
+    )):
         print(f'{idx: <5d} {count: >8d}', domain)
     print()
 
@@ -63,7 +65,7 @@ if __name__ == '__main__':
     _parser.add_argument(
         '-n', '--limit',
         dest='n',
-        help='Limit to top n-entries',
+        help='limit the outputs to top-n entries',
         default=10,
         type=int,
     )
@@ -71,10 +73,10 @@ if __name__ == '__main__':
         'lines',
         metavar='FILE',
         type=load_data,
-        help='Input file',
+        help='input domain file (txt or csv[id, value])',
     )
     _args = _parser.parse_args()
     main(
-        file_lines=list(_args.lines),
+        file_lines=[*_args.lines],
         n=_args.n,
     )

@@ -3,7 +3,7 @@ from typing import Dict, Any, Union
 from ..utils import Comparable
 
 
-class Domain(metaclass=Comparable, key='name'):
+class Domain(Comparable):
     name: str
     data: Dict[str, Any]
 
@@ -35,6 +35,9 @@ class Domain(metaclass=Comparable, key='name'):
             return f'{type(self).__name__}(name={repr(self.name)},{args})'
         else:
             return f'{type(self).__name__}(name={repr(self.name)})'
+
+    def __lt__(self, other):
+        return self.name < other.name
 
 
 __all__ = [

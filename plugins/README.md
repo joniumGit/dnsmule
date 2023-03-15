@@ -146,7 +146,7 @@ from dnsmule_plugins import certcheck, ipranges, ptrscan
 mule = DNSMule.make(Rules(), DNSPythonBackend())
 
 certcheck.CertCheckPlugin(callback=False).register(mule)
-ipranges.IPRangesPlugin().register(mule.rules)
+ipranges.IPRangesPlugin().register(mule)
 
 load_and_append_rule(
     mule.rules,

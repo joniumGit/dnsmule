@@ -70,8 +70,12 @@ class DNSMule(Mapping[Union[str, Domain], Result]):
     def _append_plugins(self, cfg: Config):
         for plugin_initializer in cfg.plugins:
             if plugin_initializer.type not in self.plugins:
-                self.plugins.add(plugin_initializer.type)
-                plugin_initializer().register(self)
+                try:
+                    plugin_initializer().register(self)
+                except Exception as e:
+                    get_logger().error(f'Failed to load plugin: {plugin_initializer.type} ({repr(e)})')
+                else:
+                    self.plugins.add(plugin_initializer.type)
             else:
                 get_logger().debug(f'Plugin already loaded: {plugin_initializer.type}')
 

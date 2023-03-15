@@ -1,7 +1,9 @@
 import asyncio
+import contextlib
 import datetime
 from typing import List, Optional, Dict
 
+from dnsmule.config import get_logger
 from dnsmule.definitions import Record, Result
 from dnsmule.rules import DynamicRule
 from . import ranges
@@ -33,15 +35,18 @@ class IpRangeChecker(DynamicRule):
         self._task.add_done_callback(self.update_fetched)
 
     def init(self, *_, **__):
-        self.start_fetching()
+        try:
+            self.start_fetching()
+        except RuntimeError:
+            """No Loop running
+            """
 
     @staticmethod
     def _get_fetcher(provider: str):
         return getattr(ranges, f'fetch_{provider}_ip_ranges')
 
     async def fetch_provider(self, provider: str):
-        if provider not in self._provider_ranges:
-            self._provider_ranges[provider] = await asyncio.create_task(self._get_fetcher(provider)())
+        self._provider_ranges[provider] = await asyncio.create_task(self._get_fetcher(provider)())
 
     async def fetch_ranges(self):
         tasks = []
@@ -49,21 +54,18 @@ class IpRangeChecker(DynamicRule):
             tasks.append(asyncio.create_task(self.fetch_provider(k)))
         if tasks:
             try:
-                await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
-            except:
-                coro = asyncio.gather(*tasks)
+                await asyncio.gather(*tasks, return_exceptions=False)
+            except Exception as e:
+                coro = asyncio.gather(*tasks, return_exceptions=True)
                 coro.cancel()
-                try:
+                with contextlib.suppress(asyncio.TimeoutError, asyncio.CancelledError):
                     await coro
-                except (asyncio.TimeoutError, asyncio.CancelledError):
-                    pass
-                raise
+                get_logger().error('Failed to fetch ranges', exc_info=e)
 
     async def check_fetch(self):
         if hasattr(self, '_task'):
             await self._task
         elif not self._last_fetch or abs(datetime.datetime.now() - self._last_fetch) > datetime.timedelta(hours=1):
-            self._provider_ranges.clear()
             self.start_fetching()
             await self._task
 

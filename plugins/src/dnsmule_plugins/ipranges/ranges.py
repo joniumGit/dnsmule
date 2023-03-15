@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from ipaddress import IPv4Network, IPv6Network, IPv4Address, IPv6Address, AddressValueError
+from ipaddress import IPv4Network, IPv6Network, IPv4Address, IPv6Address
 from typing import Set, Union, List
 
 from httpx import AsyncClient
@@ -21,7 +21,7 @@ class IPvXRange:
                 else:
                     item = IPv6Address(item)
             return item in self.address
-        except AddressValueError:
+        except ValueError:
             return False
 
 

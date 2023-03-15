@@ -1,12 +1,12 @@
 from typing import Dict, Callable, Any
 
 from ..definitions import RRType, Record, Result
-from ..utils import Comparable
+from ..utils import KwargClass, Comparable
 
 RuleFunction = Callable[[Record], Result]
 
 
-class Rule(metaclass=Comparable, key='priority', reverse=True):
+class Rule(KwargClass, Comparable):
     """Wrapper class for rules to support priority based comparison
     """
     f: RuleFunction
@@ -15,14 +15,7 @@ class Rule(metaclass=Comparable, key='priority', reverse=True):
     priority: int = 0
 
     def __init__(self, f: RuleFunction = None, **kwargs):
-        super().__init__()
-        _keys = {
-            k: v
-            for k, v in kwargs.items()
-            if not k.startswith('_')
-        }
-        self.__dict__.update(_keys)
-        self._properties = [*_keys.keys()]
+        super(Rule, self).__init__(**kwargs)
         if 'name' not in self._properties:
             self._properties.insert(0, 'name')
         if f is not None and not callable(f):
@@ -42,21 +35,14 @@ class Rule(metaclass=Comparable, key='priority', reverse=True):
             raise RecursionError('Illegal state, infinite recursion detected')
         return self.f(record)
 
-    def __repr__(self):
-        return self.__str__()
-
-    def __str__(self):
-        args = ','.join(
-            f'{k}={repr(getattr(self, k))}'
-            for k in self._properties
-        )
-        return f'{type(self).__name__}({args})'
-
     def __hash__(self):
         return hash(self.name)
 
     def __eq__(self, other: 'Rule'):
         return isinstance(other, Rule) and other.name == self.name or other == self.name
+
+    def __lt__(self, other):
+        return self.priority > other.priority
 
 
 RuleFactory = Callable[[RRType, str, Dict[str, Any]], Rule]

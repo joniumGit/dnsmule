@@ -67,7 +67,7 @@ def test_certcheck_call_add_domains(mock_collection):
 def test_certcheck_callback_with_domains(mock_collection):
     result = set()
 
-    def callback(domains):
+    def callback(*domains):
         result.update(domains)
 
     check = rule.CertChecker.creator(callback)(ports=[443], callback=True)

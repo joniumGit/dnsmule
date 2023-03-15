@@ -140,16 +140,15 @@ def collect_certificate(
         timeout: float = 1.,
         prefer_stdlib: bool = True,
 ) -> Optional[Certificate]:
+    try:
+        import cryptography
+        use_crypto = True
+    except ImportError:
+        use_crypto = False
+    cert = None
     if prefer_stdlib:
         cert = collect_certificate_stdlib(address, timeout)
-    else:
-        try:
-            import cryptography
-        except ImportError:
-            get_logger().error('Cryptography not installed')
-            raise
-        cert = None
-    if not cert:
+    if not cert and use_crypto:
         cert = collect_certificate_cryptography(address, timeout)
     return Certificate(**cert) if cert else None
 

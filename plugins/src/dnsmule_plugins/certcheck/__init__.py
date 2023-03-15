@@ -1,21 +1,18 @@
 from dnsmule import DNSMule
-from dnsmule.config import get_logger
 from dnsmule.plugins import Plugin
+
+from .rule import CertChecker
 
 
 class CertCheckPlugin(Plugin):
-    callback: bool
+    callback: bool = False
+
+    def get_callback(self, mule: DNSMule):
+        if self.callback:
+            return mule.store_domains
 
     def register(self, mule: DNSMule):
-        try:
-            from .rule import CertChecker
-            mule.rules.register('ip.certs')(CertChecker.creator(
-                lambda results: mule.store_domains(*results)
-                if self.callback else
-                None
-            ))
-        except ImportError as e:
-            get_logger().exception('Failed to add CertCheckPlugin', exc_info=e)
+        mule.rules.register('ip.certs')(CertChecker.creator(self.get_callback(mule)))
 
 
 __all__ = [

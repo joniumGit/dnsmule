@@ -44,7 +44,7 @@ async def test_backend_abstract_run_single():
 
     b = BasicBackend()
     keys = iter(rules)
-    async for result in b.run_single(rules, Domain('a')):
+    async for result in b.run_single(Domain('a'), *rules.get_types()):
         assert result == next(keys), 'Failed to get the required result'
 
 
@@ -64,7 +64,7 @@ async def test_backend_abstract_run():
     from itertools import chain
 
     keys = chain(iter(rules), iter(rules))
-    async for result in b.run(rules, Domain('a'), Domain('b')):
+    async for result in b.run([Domain('a'), Domain('b')], *rules.get_types()):
         assert result == next(keys), 'Failed to get the required result'
 
 

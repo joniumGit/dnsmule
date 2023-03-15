@@ -119,7 +119,7 @@ class DNSMule(Mapping[Union[str, Domain], Result]):
 
     async def run(self, *domains: str):
         self.store_domains(*domains)
-        async for record in self.backend.run(self.rules, *domains):
+        async for record in self.backend.run(domains, *self.rules.get_types()):
             existing = self.storage[record.domain]
             if existing:
                 record.result() + existing

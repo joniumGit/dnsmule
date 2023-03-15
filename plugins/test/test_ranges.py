@@ -27,6 +27,11 @@ def test_ranges_ipvx_has_no_network():
     assert IPv4Network('127.0.0.0/31') not in r
 
 
+def test_ranges_ipvx_has_no_proto_mismatch():
+    r = ranges.IPvXRange(address=IPv4Network('127.0.0.0/24'), service='test', region='test-region')
+    assert '2001:db8:a::123' not in r
+
+
 def test_ranges_ipvx_network_raises():
     r = ranges.IPvXRange(address=IPv4Network('127.0.0.0/24'), service='test', region='test-region')
     assert '127.0.0.0/16' not in r

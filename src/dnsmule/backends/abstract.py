@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator, Any, Union
+from typing import AsyncGenerator, Any, Union, Iterable
 
 from ..definitions import Domain, RRType, Record
-from ..rules import Rules
 
 
 class Backend(ABC):
@@ -14,13 +13,12 @@ class Backend(ABC):
             if not k.startswith('_')
         })
 
-    async def run(self, rules: Rules, *targets: Union[str, Domain]) -> AsyncGenerator[Record, Any]:
+    async def run(self, targets: Iterable[Union[str, Domain]], *types: RRType) -> AsyncGenerator[Record, Any]:
         for target in targets:
-            async for record in self.run_single(rules, target):
+            async for record in self.run_single(target, *types):
                 yield record
 
-    async def run_single(self, rules: Rules, target: Union[str, Domain]) -> AsyncGenerator[Record, Any]:
-        types = rules.get_types()
+    async def run_single(self, target: Union[str, Domain], *types: RRType) -> AsyncGenerator[Record, Any]:
         async for record in self.process(
                 target if isinstance(target, Domain) else Domain(target),
                 *types

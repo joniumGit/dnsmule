@@ -1,73 +1,43 @@
-from typing import List, Union, Dict
+import ipaddress
 
-from dns import reversename as reverse_query
-from dns.name import Name
-from dns.rdata import Rdata
-from dns.rdatatype import RdataType
-from dns.rdtypes.IN import A
-
-from dnsmule.backends.dnspython import DNSPythonBackend
-from dnsmule.config import get_logger
-from dnsmule.definitions import Record, Result
+from dnsmule import DNSMule
+from dnsmule.definitions import Record, Result, RRType, Domain
 from dnsmule.rules import Rule
 
 
 class PTRScan(Rule):
-    _backend: DNSPythonBackend
+    _mule: DNSMule
 
     @staticmethod
-    def creator(backend: DNSPythonBackend):
+    def creator(mule: DNSMule):
         def ptr_scan(**kwargs):
             be = PTRScan(**kwargs)
-            be._backend = backend
+            be._mule = mule
             return be
 
         return ptr_scan
 
-    async def query_records(self, host: Union[str, Name], *types: int) -> Dict[int, List[Rdata]]:
-        out = {
-            t: []
-            for t in types
-        }
-        for record_type in types:
-            async for record in self._backend.dns_query(host, record_type):
-                for answer in record.answer:
-                    if answer.rdtype == record_type:
-                        out[record_type].extend(answer)
-        return out
-
-    async def a_to_ptr(self, host: str) -> List[Rdata]:
-        """Returns any PTR records for a host
-        """
-        out = []
-        for value in (await self.query_records(host, RdataType.A))[RdataType.A]:
-            out.extend(
-                (await self.query_records(
-                    reverse_query.from_address(value.to_text()),
-                    RdataType.PTR,
-                ))[RdataType.PTR]
-            )
-        return out
+    @staticmethod
+    def reverse_query(ip: str) -> Domain:
+        return Domain(ipaddress.ip_address(ip).reverse_pointer)
 
     async def __call__(self, record: Record) -> Result:
-        og: A = record.data.data['original']
-        records = await self.query_records(reverse_query.from_address(og.to_text()), RdataType.PTR)
-        if RdataType.PTR in records:
-            for r in records[RdataType.PTR]:
-                get_logger().info('PTR %s', r.to_text())
-            result = Result(domain=record.domain)
-            ptrs = [r.to_text() for r in records[RdataType.PTR]]
-            existing_result = record.result()
-            existing = set()
-            if 'resolvedPointers' in existing_result.data:
-                existing.update(existing_result.data['resolvedPointers'])
-            result.data['resolvedPointers'] = [p for p in ptrs if p not in existing]
-            ptr_patterns = [
-                '-'.join(reversed(og.address.split('.'))),
-                '.'.join(reversed(og.address.split('.'))),
-                og.address,
-                '-'.join(og.address.split('.')),
-            ]
+        result = Result(domain=record.domain)
+        address = record.data.to_text()
+        ptr_patterns = [
+            '-'.join(reversed(address.split('.'))),
+            '.'.join(reversed(address.split('.'))),
+            address,
+            '-'.join(address.split('.')),
+        ]
+        ptrs = [
+            ptr.data.to_text()
+            async for ptr in self._mule.backend.run_single(
+                self.reverse_query(record.data.to_text()),
+                RRType.PTR,
+            )
+        ]
+        if ptrs:
             for ptr in ptrs:
                 for pattern in ptr_patterns:
                     if pattern in ptr:
@@ -75,9 +45,14 @@ class PTRScan(Rule):
                             _id = ptr.removeprefix(pattern)
                         else:
                             _id = ptr.partition(pattern)[2]
-                        record.identify(f'IP:PTR::{self.name.upper()}::{_id.strip(".").upper()}')
+                        result.tags.add(f'IP::PTR::{self.name.upper()}::{_id.strip(".").upper()}')
                         break
-            return result
+            existing_result = record.result()
+            existing = set()
+            if 'resolvedPointers' in existing_result.data:
+                existing.update(existing_result.data['resolvedPointers'])
+            result.data['resolvedPointers'] = [p for p in ptrs if p not in existing]
+        return result
 
 
 __all__ = [

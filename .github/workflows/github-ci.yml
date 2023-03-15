@@ -30,7 +30,7 @@ jobs:
       - name: Install packages
         run: |
           python -m pip install .[dev]
-          python -m pip install plugins/.[optional]
+          python -m pip install plugins/.[all]
           python -m pip install -r server/requirements.txt
       - name: Invoke Tests
         run: pytest -c pytest-all.ini

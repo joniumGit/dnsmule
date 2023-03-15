@@ -117,11 +117,6 @@ IP::PTR::SAMPLE_RULE::AREA.HOSTER.EXAMPLE.COM
 
 Any resolved `PTR` records are also added to `result.data['resolvedPointers']`.
 
-This plugin requires the following dependencies:
-
-- `dnspython`
-- `dnsmule.backends.DNSPythonBackend`
-
 ## Example
 
 In YAML the plugins are placed in their own `plugins` block:
@@ -172,14 +167,13 @@ load_and_append_rule(
 
 )
 
-if mule.backend_type == 'DNSPythonBackend':
-    ptrscan.PTRScanPlugin().register(mule)
-    load_and_append_rule(
-        mule.rules,
-        RRType.A,
-        'ip.ptr',
-        {
-            'name': 'ptrscan'
-        },
-    )
+ptrscan.PTRScanPlugin().register(mule)
+load_and_append_rule(
+    mule.rules,
+    RRType.A,
+    'ip.ptr',
+    {
+        'name': 'ptrscan'
+    },
+)
 ```

@@ -1,3 +1,4 @@
+import ipaddress
 from dataclasses import dataclass
 from ipaddress import IPv4Network, IPv6Network, IPv4Address, IPv6Address
 from typing import Set, Union, List
@@ -16,10 +17,7 @@ class IPvXRange:
     def __contains__(self, item: Union[str, IPv4Address, IPv6Address]):
         try:
             if isinstance(item, str):
-                if ':' not in item:
-                    item = IPv4Address(item)
-                else:
-                    item = IPv6Address(item)
+                item = ipaddress.ip_address(item)
             return item in self.address
         except ValueError:
             return False

@@ -41,11 +41,17 @@ setup(
     python_requires='>=3.7',
     install_requires=[
         'dnsmule',
-        'httpx',
     ],
     extras_require={
-        'optional': [
+        'certs': [
             'cryptography',
+        ],
+        'ranges': [
+            'httpx',
+        ],
+        'all': [
+            'cryptography',
+            'httpx',
         ]
     },
     project_urls={

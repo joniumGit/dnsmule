@@ -1,11 +1,10 @@
 import ipaddress
+import json
 from dataclasses import dataclass
+from html.parser import HTMLParser
 from ipaddress import IPv4Network, IPv6Network, IPv4Address, IPv6Address
 from typing import Set, Union, List
-
-from httpx import AsyncClient
-
-from dnsmule.config import get_logger
+from urllib.request import urlopen
 
 
 @dataclass
@@ -23,17 +22,22 @@ class IPvXRange:
             return False
 
 
-async def fetch_google_ip_ranges_goog() -> Set[IPv4Network]:
+class MicrosoftDownloadGrabber(HTMLParser):
+    json_url: str = None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == 'a':
+            attrs = {k: v for k, v in attrs}
+            if attrs.get('href', '').startswith('https://download.microsoft.com'):
+                if self.json_url is None:
+                    self.json_url = attrs['href']
+
+
+def fetch_google_ip_ranges_goog() -> Set[IPv4Network]:
     host = 'https://www.gstatic.com/ipranges/goog.json'
 
-    async with AsyncClient() as client:
-        data = (await client.get(host)).json()
-
-    get_logger().debug(
-        '---GOOGLE GOOG DATA---\nModified:\n%s\nCount:\n%s',
-        data['creationTime'],
-        len(data['prefixes']),
-    )
+    with urlopen(host) as f:
+        data = json.load(f)
 
     return {
         IPv4Network(e['ipv4Prefix'])
@@ -43,17 +47,11 @@ async def fetch_google_ip_ranges_goog() -> Set[IPv4Network]:
     }
 
 
-async def fetch_google_ip_ranges_cloud() -> List[IPvXRange]:
+def fetch_google_ip_ranges_cloud() -> List[IPvXRange]:
     host = 'https://www.gstatic.com/ipranges/cloud.json'
 
-    async with AsyncClient() as client:
-        data = (await client.get(host)).json()
-
-    get_logger().debug(
-        '---GOOGLE CLOUD DATA---\nModified:\n%s\nCount:\n%s',
-        data['creationTime'],
-        len(data['prefixes']),
-    )
+    with urlopen(host) as f:
+        data = json.load(f)
 
     return [
         IPvXRange(
@@ -65,10 +63,9 @@ async def fetch_google_ip_ranges_cloud() -> List[IPvXRange]:
     ]
 
 
-async def fetch_google_ip_ranges():
-    ranges_cloud = await fetch_google_ip_ranges_cloud()
-    ranges_goog = await fetch_google_ip_ranges_goog()
-
+def fetch_google_ip_ranges():
+    ranges_cloud = fetch_google_ip_ranges_cloud()
+    ranges_goog = fetch_google_ip_ranges_goog()
     return [
         e
         for e in ranges_cloud
@@ -76,17 +73,11 @@ async def fetch_google_ip_ranges():
     ]
 
 
-async def fetch_amazon_ip_ranges() -> List[IPvXRange]:
+def fetch_amazon_ip_ranges() -> List[IPvXRange]:
     host = 'https://ip-ranges.amazonaws.com/ip-ranges.json'
 
-    async with AsyncClient() as client:
-        data = (await client.get(host)).json()
-
-    get_logger().debug(
-        '---AMAZON DATA---\nModified:\n%s\nCount:\n%s',
-        data['createDate'],
-        len(data['prefixes']),
-    )
+    with urlopen(host) as f:
+        data = json.load(f)
 
     return [
         *(
@@ -108,33 +99,15 @@ async def fetch_amazon_ip_ranges() -> List[IPvXRange]:
     ]
 
 
-async def fetch_microsoft_ip_ranges() -> List[IPvXRange]:
+def fetch_microsoft_ip_ranges() -> List[IPvXRange]:
     host = 'https://www.microsoft.com/en-us/download/confirmation.aspx?id=56519'
+    p = MicrosoftDownloadGrabber()
+    with urlopen(host) as f:
+        p.feed(f.read().decode('utf-8'))
 
-    from html.parser import HTMLParser
-    async with AsyncClient() as client:
-        json_url = ''
-
-        class MicrosoftDownloadGrabber(HTMLParser):
-
-            def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-                if tag == 'a':
-                    attrs = {k: v for k, v in attrs}
-                    if attrs.get('href', '').startswith('https://download.microsoft.com'):
-                        nonlocal json_url
-                        json_url = attrs['href']
-
-        p = MicrosoftDownloadGrabber()
-        p.feed((await client.get(host)).text)
-
-        assert json_url != ''
-        data = (await client.get(json_url)).json()
-
-    get_logger().debug(
-        '---MICROSOFT DATA---\nChange N:\n%s\nCount:\n%s',
-        data['changeNumber'],
-        len(data['values']),
-    )
+    assert p.json_url, 'Failed to find Microsoft JSON'
+    with urlopen(p.json_url) as f:
+        data = json.load(f)
 
     return [
         IPvXRange(

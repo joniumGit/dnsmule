@@ -46,7 +46,7 @@ class IpRangeChecker(DynamicRule):
         return getattr(ranges, f'fetch_{provider}_ip_ranges')
 
     async def fetch_provider(self, provider: str):
-        self._provider_ranges[provider] = await asyncio.create_task(self._get_fetcher(provider)())
+        self._provider_ranges[provider] = self._get_fetcher(provider)()
 
     async def fetch_ranges(self):
         tasks = []

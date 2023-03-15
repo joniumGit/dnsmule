@@ -46,12 +46,8 @@ setup(
         'certs': [
             'cryptography',
         ],
-        'ranges': [
-            'httpx',
-        ],
         'all': [
             'cryptography',
-            'httpx',
         ]
     },
     project_urls={

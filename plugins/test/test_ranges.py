@@ -72,9 +72,8 @@ PROVIDERS = [
 class TestRangesFetching:
 
     @pytest.mark.parametrize('provider', PROVIDERS)
-    @async_test
-    async def test_fetch_ranges(self, provider):
-        assert len(await getattr(ranges, f'fetch_{provider}_ip_ranges')()) != 0, f'Failed to fetch {provider} ranges'
+    def test_fetch_ranges(self, provider):
+        assert len(getattr(ranges, f'fetch_{provider}_ip_ranges')()) != 0, f'Failed to fetch {provider} ranges'
 
     @async_test
     async def test_fetch_with_plugin(self):

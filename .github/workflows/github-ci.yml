@@ -9,6 +9,7 @@ on:
       - '.github/workflows/*.yml'
       - 'server/*.py'
       - 'server/*.yml'
+      - 'server/*.txt'
       - 'plugins/src/**'
       - 'plugins/test/**'
       - 'src/**'

@@ -1,18 +1,19 @@
-from dnsmule import DNSMule
-from dnsmule.plugins import Plugin
+from typing import Optional, Callable, Collection
 
+from dnsmule import DNSMule, Domain, Plugin
 from .rule import CertChecker
 
 
 class CertCheckPlugin(Plugin):
+    _id = 'plugin.ip.certs'
     callback: bool = False
 
-    def get_callback(self, mule: DNSMule):
+    def get_callback(self, mule: DNSMule) -> Optional[Callable[[Collection[Domain]], None]]:
         if self.callback:
-            return mule.store_domains
+            return mule.scan
 
     def register(self, mule: DNSMule):
-        mule.rules.register('ip.certs')(CertChecker.creator(self.get_callback(mule)))
+        mule.rules.register(CertChecker.id)(CertChecker.creator(self.get_callback(mule)))
 
 
 __all__ = [

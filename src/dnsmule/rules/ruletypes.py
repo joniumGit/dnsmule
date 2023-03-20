@@ -1,21 +1,20 @@
 import functools
 import operator
 import re
-from typing import Any
-from typing import List
-from typing import Union
+from typing import List, Union, Callable, Dict, Any
 
-from .entities import Rule, RuleFactory
-from ..definitions import Result, Record, RRType
+from .entities import Rule
+from ..definitions import Result, Record, RRType, Tag, Domain
 
 
 class RegexRule(Rule):
+    _id = 'dns.regex'
+
     pattern: str
     patterns: List[str]
 
     identification: str = None
     flags: List[str] = None
-    attribute: str = 'to_text'
     group: Union[int, str] = None
 
     _patterns: List[re.Pattern]
@@ -41,33 +40,24 @@ class RegexRule(Rule):
         if getattr(self, 'patterns', False):
             self._patterns.extend(re.compile(p, flags=flags) for p in self.patterns)
 
-    def get_attribute(self, record: Record):
-        """Resolves attribute from record
-
-        Also strips any leading or trailing quotes
-        """
-        attr = getattr(record.data, self.attribute)
-        if callable(attr):
-            out = str(attr())
-        else:
-            out = str(attr)
-        return out
-
     def __call__(self, record: Record):
         """Calls through all patterns and finds first identification
         """
         for p in self._patterns:
-            m = p.search(self.get_attribute(record))
+            m = p.search(record.text)
             if m:
                 _id = self.identification if self.group is None else m.group(self.group)
                 if _id:
                     _id = _id.upper()
                 else:
                     _id = 'UNKNOWN'
-                return record.identify(f'DNS::REGEX::{self.name.upper()}::{_id}')
+                record.tag(f'DNS::REGEX::{self.name.upper()}::{_id}')
+        return record.result
 
 
 class DynamicRule(Rule):
+    _id = 'dns.dynamic'
+
     code: str
     globals: dict
 
@@ -78,13 +68,22 @@ class DynamicRule(Rule):
             'RRType': RRType,
             'Record': Record,
             'Result': Result,
+            'Domain': Domain,
+            'Tag': Tag,
         }
         if not self.code:
             raise ValueError('No code provided')
         self._code = compile(self.code, 'dynamic_rule.py', 'exec')
 
-    def init(self, create_callback: RuleFactory):
-        def add_rule(record_type: Any, rule_type: str, name: str, priority: int = 0, **options):
+    def init(self, create_callback: Callable[[Union[str, int, RRType], str, Dict[str, Any]], None]):
+        def add_rule(
+                record_type: Union[str, int, RRType],
+                rule_type: str,
+                name: str,
+                *,
+                priority: int = 0,
+                **options,
+        ):
             create_callback(
                 record_type,
                 rule_type,

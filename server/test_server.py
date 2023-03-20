@@ -3,9 +3,9 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from dnsmule import DNSMule
+from dnsmule import DNSMule, Plugin
 from dnsmule.definitions import Result, Domain, RRType
-from dnsmule.storage import ResultMapper
+from dnsmule.storages.kvstorage import result_to_json_data
 from server import app
 
 test_rules = Path(__file__).parent / 'rules.yml'
@@ -41,18 +41,18 @@ def test_server_get_results_empty(client):
 
 def test_server_get_results_items(client, mule):
     result = Result(
-        type=RRType.A,
+        initial_type=RRType.A,
         domain=Domain('example.com')
     )
-    result.tags.add('test_tag')
-    result['test_data'] = 1
+    result.tag('test_tag')
+    result.data['test_data'] = 1
     mule.storage[result.domain] = result
 
     r = client.get('/results')
     assert r.status_code == 200, 'Failed to find results'
     assert r.json() == {
         'results': [
-            ResultMapper.to_json(result),
+            result_to_json_data(result),
         ]
     }, 'Result output was different'
 
@@ -148,7 +148,7 @@ def test_server_rescan_count_empty(client):
 
 
 def test_server_create_new_rule_duplicate(client, mule):
-    assert mule.rules.has_rule(RRType.A, 'test_rule_1'), 'Failed to have seed data'
+    assert mule.rules.contains(RRType.A, 'test_rule_1'), 'Failed to have seed data'
     r = client.post('/rules', json={
         'type': 'dns.regex',
         'record': 'A',
@@ -175,7 +175,14 @@ def test_server_create_new_rule(client, mule):
 
 
 def test_server_get_plugins(client, mule):
-    mule.plugins.add('test_plugin_1')
+    class Plugin1(Plugin):
+        _id = 'test_plugin_1'
+
+        def register(self, _):
+            """Never called
+            """
+
+    mule.plugins.add(Plugin1())
     r = client.get('/plugins')
     assert r.status_code == 200, 'Failed call'
     assert r.json() == {

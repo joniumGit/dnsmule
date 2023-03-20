@@ -1,46 +1,45 @@
 from dataclasses import dataclass
-from typing import Dict, Set, Union
+from typing import Dict, Set, Union, List, Optional
 
 from .domain import Domain
 from .rrtype import RRType
-from ..utils import lmerge
+from .tag import Tag
+from ..utils import lmerge, Comparable
+
+ResultData = Dict[str, Union['ResultData', List, str, int, float]]
 
 
-@dataclass(slots=True, init=False, frozen=False)
-class Result:
-    domain: str
+@dataclass(frozen=False, init=False, repr=True, eq=False, unsafe_hash=False)
+class Result(Comparable):
+    domain: Domain
     type: Set[RRType]
-    tags: Set[str]
-    data: Dict
+    tags: Set[Tag]
+    data: ResultData
 
     # noinspection PyShadowingBuiltins
-    def __init__(self, domain: Union[Domain, str], type: RRType = None):
+    def __init__(self, domain: Domain, initial_type: RRType = None):
         self.type = set()
-        if type:
-            self.type.add(type)
-        self.domain = domain.name if isinstance(domain, Domain) else domain
+        if initial_type:
+            self.type.add(initial_type)
+        self.domain = domain
         self.tags = set()
         self.data = {}
 
-    def __getitem__(self, item):
-        return self.data[item]
-
-    def __setitem__(self, key, value):
-        self.data[key] = value
-
-    def __contains__(self, item):
-        return item in self.tags
+    def tag(self, tag: Union[str, Tag]):
+        self.tags.add(tag)
 
     def __add__(self, other: 'Result') -> 'Result':
-        if not isinstance(other, Result):
+        if other is None or other is self:
+            return self
+        elif not isinstance(other, Result):
             raise TypeError(f'Can not add Result and {type(other)}')
-        if self is not other:
-            if self.domain != other.domain:
-                raise ValueError('Can not add different domains')
+        elif self.domain != other.domain:
+            raise ValueError('Can not add different domains')
+        else:
             self.type.update(other.type)
             self.tags.update(other.tags)
             lmerge(self.data, other.data)
-        return self
+            return self
 
     def __bool__(self):
         return bool(self.tags or self.data)
@@ -51,13 +50,26 @@ class Result:
     def __eq__(self, other: 'Result'):
         return isinstance(other, Result) and other.domain == self.domain or other == self.domain
 
+    def __contains__(self, item):
+        return item in self.tags
+
     def __len__(self):
         return len(self.tags)
 
     def __iter__(self):
         return iter(self.tags)
 
+    def __lt__(self, other: 'Result'):
+        return self.domain < other.domain
+
+    def __getitem__(self, item: str) -> Optional[ResultData]:
+        return self.data[item]
+
+    def __setitem__(self, key: str, value: Union[ResultData, List, str, int, float]) -> None:
+        self.data[key] = value
+
 
 __all__ = [
     'Result',
+    'ResultData',
 ]

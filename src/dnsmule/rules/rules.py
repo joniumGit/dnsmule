@@ -1,65 +1,73 @@
-from collections import defaultdict
-from typing import Dict, Union, List, Mapping
+from abc import ABC
+from typing import Dict, Union, List, Iterable, Tuple
 
 from .entities import Rule, RuleCreator
 from .factories import RuleFactoryMixIn
-from ..config import get_logger
-from ..definitions import Record, Result, RRType
+from ..definitions import Record, RRType
+from ..logger import get_logger
 
 
-class Rules(Mapping[Union[int, RRType], List[Rule]], RuleFactoryMixIn):
-    """Class for storing rules
-    """
+class RulesBase(RuleFactoryMixIn, ABC):
     _rules: Dict[Union[int, RRType], List[Rule]]
 
     def __init__(self):
-        super().__init__()
-        self.log = get_logger()
-        self._rules = defaultdict(list)
+        super(RulesBase, self).__init__()
+        self._rules = {}
 
-    async def process_record(self, record: Record) -> Result:
-        result = record.result()
-        for r in self._rules.get(record.type, []):
+    def process(self, record: Record) -> None:
+        for rule in self._rules.get(record.type, []):
             try:
-                t = r(record)
-                if hasattr(t, '__await__'):
-                    t = await t
-                if t:
-                    result += t
+                record.result += rule(record)
             except Exception as e:
-                self.log.error(f'Rule {r.name} raised an exception', exc_info=e)
-        return result
+                get_logger().error(f'Rule {rule.name} raised an exception', exc_info=e)
 
-    def add_rule(self, rtype: Union[RRType, int, str], rule: Rule) -> None:
-        rtype = RRType.from_any(rtype)
-        self._rules[rtype].append(rule)
-        self._rules[rtype].sort()
+    def append(self, record: Union[str, int, RRType], rule: Rule) -> None:
+        record = RRType.from_any(record)
+        if record not in self._rules:
+            self._rules[record] = []
+        if rule in self._rules[record]:
+            raise ValueError('Rule already exists')
+        self._rules[record].append(rule)
+        self._rules[record].sort()
 
-    def get_types(self) -> List[RRType]:
-        return [*self._rules.keys()]
-
-    @property
-    def add(self) -> RuleCreator:
-        return RuleCreator(callback=self.add_rule)
-
-    def __getitem__(self, item: Union[RRType, int, str]) -> List[Rule]:
-        return self._rules[RRType.from_any(item)]
-
-    def __iter__(self):
-        yield from iter(self._rules)
-
-    def __len__(self) -> int:
-        return len(self._rules)
-
-    def __contains__(self, item: Union[int, RRType, str]):
-        return item in self._rules
-
-    def has_rule(self, record: Union[int, RRType, str], name: str) -> bool:
+    def contains(self, record: Union[str, int, RRType], name: str) -> bool:
         record = RRType.from_any(record)
         return name in self._rules[record] if record in self._rules else False
 
-    def rule_count(self):
+    def size(self):
         return sum(len(c) for c in self._rules.values())
+
+    def get(self, rtype: Union[RRType, int, str]):
+        rtype = RRType.from_any(rtype)
+        if rtype not in self._rules:
+            self._rules[rtype] = []
+        return self._rules[rtype]
+
+    def iterate(self) -> Iterable[Tuple[Union[int, RRType], List[Rule]]]:
+        yield from self._rules.items()
+
+    @property
+    def types(self) -> Iterable[RRType]:
+        return iter(self._rules.keys())
+
+    @property
+    def add(self) -> RuleCreator:
+        return RuleCreator(callback=self.append)
+
+
+class Rules(RulesBase):
+
+    def __getitem__(self, key: Union[str, int, RRType]) -> List[Rule]:
+        return self.get(key)
+
+    def __len__(self) -> int:
+        return sum(map(len, self._rules.values()))
+
+    def __iter__(self) -> Iterable[Tuple[Union[int, RRType], List[Rule]]]:
+        yield from self.iterate()
+
+    def keys(self):
+        yield from self._rules.keys()
 
 
 __all__ = [

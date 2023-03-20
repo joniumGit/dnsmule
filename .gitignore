@@ -12,8 +12,7 @@ __service_cache__
 *.txt
 *.csv
 *.json
-!test/sample*.txt
-!test/sample*.csv
+!test/**/sample*
 dist
 **/dist
 !server/requirements.txt

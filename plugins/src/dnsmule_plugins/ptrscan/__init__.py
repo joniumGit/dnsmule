@@ -4,9 +4,10 @@ from .rule import PTRScan
 
 
 class PTRScanPlugin(Plugin):
+    _id = 'plugin.ip.ptr'
 
     def register(self, mule: DNSMule):
-        mule.rules.register('ip.ptr')(PTRScan.creator(mule))
+        mule.rules.register(PTRScan.id)(PTRScan.creator(mule))
 
 
 __all__ = [

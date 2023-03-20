@@ -1,146 +1,118 @@
 from pathlib import Path
-from typing import Union, Mapping, List, Set
+from typing import Union, Collection, Optional, Dict, Any, Container, Iterable
 
 from .backends import Backend
-from .config import get_logger
-from .definitions import Domain, Result
-from .loader import load_config, Config
+from .definitions import Domain, Result, RRType, Tag
+from .loader import ConfigLoader
+from .plugins import Plugins
 from .rules import Rules
-from .storage import Storage
+from .storages import Storage, Query
 
 
-class DNSMule(Mapping[Union[str, Domain], Result]):
+class DNSMule:
     rules: Rules
     backend: Backend
-    plugins: Set[str]
     storage: Storage
+    plugins: Plugins
 
     @staticmethod
-    def load(file: Union[str, Path]):
-        return DNSMule(file=file)
-
-    @staticmethod
-    def make(rules: Rules = None, backend: Backend = None, storage: Storage = None):
+    def make(
+            rules: Rules = None,
+            backend: Backend = None,
+            storage: Storage = None,
+            plugins: Plugins = None,
+    ):
         if backend is None:
             from .backends.noop import NOOPBackend
             backend = NOOPBackend()
         if storage is None:
-            from .storage.dictstorage import DictStorage
+            from .storages.dictstorage import DictStorage
             storage = DictStorage()
         if rules is None:
             rules = Rules()
-        return DNSMule(rules=rules, backend=backend, storage=storage)
+        if plugins is None:
+            plugins = Plugins()
+        return DNSMule(
+            rules=rules,
+            backend=backend,
+            storage=storage,
+            plugins=plugins,
+        )
+
+    @staticmethod
+    def load(file: Union[str, Path]):
+        loader = ConfigLoader(DNSMule.make())
+        loader.load_config(file)
+        loader.all()
+        return loader.mule
 
     def __init__(
             self,
-            file: Union[str, Path] = None,
-            rules: Rules = None,
-            backend: Backend = None,
-            storage: Storage = None,
+            rules: Rules,
+            backend: Backend,
+            storage: Storage,
+            plugins: Plugins,
     ):
-        self.plugins = set()
-        if rules is not None:
-            self.rules = rules
-        if backend is not None:
-            self.backend = backend
-        if storage is not None:
-            self.storage = storage
-        if file:
-            config = load_config(file)
-            if backend is None:
-                self.backend = config.backend()
-            if storage is None:
-                self.storage = config.storage()
-            if rules is None:
-                self.rules = Rules()
-            self._append_plugins(config)
-            self._append_rules(config)
-        if getattr(self, 'rules', None) is None or getattr(self, 'backend', None) is None:
-            raise ValueError('Both Rules and Backend Required')
 
-    @property
-    def backend_type(self):
-        return type(self.backend).__name__
-
-    async def swap_backend(self, backend: Backend):
-        await self.backend.stop()
+        self.rules = rules
         self.backend = backend
-        await backend.start()
+        self.storage = storage
+        self.plugins = plugins
+        missing = [*filter(
+            lambda o: getattr(self, o, None) is None,
+            ['rules', 'backend', 'storage', 'plugins'],
+        )]
+        if missing:
+            raise ValueError('Missing required attributes (%s)' % ','.join(missing))
 
-    def _append_plugins(self, cfg: Config):
-        for plugin_initializer in cfg.plugins:
-            if plugin_initializer.type not in self.plugins:
-                try:
-                    plugin_initializer().register(self)
-                except Exception as e:
-                    get_logger().error(f'Failed to load plugin: {plugin_initializer.type} ({repr(e)})')
-                else:
-                    self.plugins.add(plugin_initializer.type)
-            else:
-                get_logger().debug(f'Plugin already loaded: {plugin_initializer.type}')
-
-    def _append_rules(self, cfg: Config):
-        cfg.rules(rules=self.rules)
-
-    def append_config(self, f: Union[str, Path]):
+    def append(self, config: Union[str, Path]) -> 'DNSMule':
         """Loads rules and plugins from a yaml configuration and adds them to this mule
 
         :raises ValueError: On duplicate rules
         """
-        cfg = load_config(
-            f,
-            rules=True,
-            backend=False,
-            plugins=True,
-        )
-        self._append_plugins(cfg)
-        self._append_rules(cfg)
-
-    def store_result(self, result: Result):
-        self.storage[result.domain] = result
-
-    def store_domains(self, *domains: str):
-        for domain in domains:
-            if domain not in self.storage:
-                self.storage[domain] = Result(Domain(domain))
-
-    def __getitem__(self, domain: str):
-        if domain in self:
-            return self.storage[domain]
-
-    def __contains__(self, domain: str):
-        return domain in self.storage
-
-    def __iter__(self):
-        yield from sorted(iter(self.storage))
-
-    def __len__(self) -> int:
-        return len(self.storage)
-
-    async def run(self, *domains: str):
-        self.store_domains(*domains)
-        async for record in self.backend.run(domains, *self.rules.get_types()):
-            existing = self.storage[record.domain]
-            if existing:
-                record.result() + existing
-            result = await self.rules.process_record(record)
-            self.store_result(result)
-
-    def domains(self) -> List[str]:
-        return [*self]
-
-    async def __aenter__(self):
-        await self.start()
+        loader = ConfigLoader(self)
+        loader.load_config(config)
+        loader.append_plugins()
+        loader.append_rules()
         return self
 
-    async def __aexit__(self, *_):
-        await self.stop()
+    def scan(self, *domains: Union[Iterable[Union[str, Domain]], Union[str, Domain]]) -> None:
+        """Scans a domain with included rules and stores te result
 
-    async def start(self):
-        await self.backend.start()
+        Can be called with either a single argument that is an iterable of domains
+        or multiple single domains.
+        """
+        if all(map(lambda o: isinstance(o, str), domains)):
+            domains = [*domains]
+        else:
+            domains = [*domains[0]]
+        for domain in domains:
+            if domain not in self.storage:
+                self.storage.store(Result(domain))
+        for record in self.backend.run(domains, *self.rules.types):
+            with self.storage.using(record.result):
+                self.rules.process(record)
 
-    async def stop(self):
-        await self.backend.stop()
+    def result(self, domain: Union[str, Domain]) -> Optional[Result]:
+        """Return a result for a domain if one exists
+        """
+        return self.storage.fetch(Domain(domain))
+
+    def search(
+            self,
+            domains: Collection[Union[str, Domain]] = None,
+            types: Collection[Union[str, int, RRType]] = None,
+            tags: Collection[Union[str, Tag]] = None,
+            data: Dict[str, Union[Any, Container[Any]]] = None,
+    ):
+        """Search for a result given the parameters
+        """
+        return self.storage.query(Query(
+            domains=domains or Query.ANY,
+            types=types or Query.ANY,
+            tags=tags or Query.ANY,
+            data=data or Query.ANY,
+        ))
 
 
 __all__ = [

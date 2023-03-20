@@ -1,16 +1,17 @@
 import asyncio
-import contextlib
 import datetime
-from concurrent.futures import ThreadPoolExecutor
-from typing import List, Optional, Dict
+from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
+from typing import List, Optional, Dict, cast
 
-from dnsmule.config import get_logger
 from dnsmule.definitions import Record, Result
-from dnsmule.rules import DynamicRule
+from dnsmule.logger import get_logger
+from dnsmule.rules import Rule
 from . import ranges
 
 
-class IpRangeChecker(DynamicRule):
+class IpRangeChecker(Rule):
+    _id = 'ip.ranges'
+
     providers: List[str]
 
     _last_fetch: Optional[datetime.datetime] = None
@@ -22,25 +23,10 @@ class IpRangeChecker(DynamicRule):
         super().__init__(**kwargs)
         self.globals = {}
         self.providers = [*{*self.providers}] if hasattr(self, 'providers') else []
-        self._provider_ranges = {}
+        self._provider_ranges = cast(Dict[str, List[ranges.IPvXRange]], {})
         for provider in self.providers:
             # If this fails it will throw
             self._get_fetcher(provider)
-
-    def update_fetched(self, *_, **__):
-        self._last_fetch = datetime.datetime.now()
-        del self._task
-
-    def start_fetching(self):
-        self._task = asyncio.create_task(self.fetch_ranges())
-        self._task.add_done_callback(self.update_fetched)
-
-    def init(self, *_, **__):
-        try:
-            self.start_fetching()
-        except RuntimeError:
-            """No Loop running
-            """
 
     @staticmethod
     def _get_fetcher(provider: str):
@@ -49,43 +35,35 @@ class IpRangeChecker(DynamicRule):
     def fetch_provider(self, provider: str):
         self._provider_ranges[provider] = self._get_fetcher(provider)()
 
-    async def fetch_ranges(self):
+    def fetch_ranges(self):
         with ThreadPoolExecutor() as tp:
             tasks = []
-            loop = asyncio.get_running_loop()
             for k in self.providers:
-                tasks.append(loop.run_in_executor(tp, self.fetch_provider, k))
+                tasks.append(tp.submit(self.fetch_provider, k))
             if tasks:
-                try:
-                    await asyncio.gather(*tasks, return_exceptions=False)
-                except Exception as e:
-                    coro = asyncio.gather(*tasks, return_exceptions=True)
-                    coro.cancel()
-                    with contextlib.suppress(asyncio.TimeoutError, asyncio.CancelledError):
-                        await coro
-                    get_logger().error('Failed to fetch ranges', exc_info=e)
+                wait(tasks, return_when=ALL_COMPLETED)
+                for t in tasks:
+                    if t.done() and t.exception() is not None:
+                        get_logger().error('Failed to fetch ranges', exc_info=t.exception())
 
-    async def check_fetch(self):
-        if hasattr(self, '_task'):
-            await self._task
-        elif not self._last_fetch or abs(datetime.datetime.now() - self._last_fetch) > datetime.timedelta(hours=1):
-            self.start_fetching()
-            await self._task
+    def check_fetch(self):
+        if not self._last_fetch or abs(datetime.datetime.now() - self._last_fetch) > datetime.timedelta(hours=1):
+            self.fetch_ranges()
+            self._last_fetch = datetime.datetime.now()
 
-    async def __call__(self, record: Record) -> Result:
-        await self.check_fetch()
-        result = record.result()
-        address: str = record.data.to_text()
+    def __call__(self, record: Record) -> Result:
+        self.check_fetch()
+        address: str = record.text
         for provider, p_ranges in self._provider_ranges.items():
             for p_range in p_ranges:
                 if address in p_range:
-                    result.tags.add(
+                    record.result.tags.add(
                         f'IP::RANGES'
                         f'::{self.name.upper()}'
                         f'::{p_range.service.upper()}'
                         f'::{p_range.region.upper()}'
                     )
-        return result
+        return record.result
 
 
 __all__ = [

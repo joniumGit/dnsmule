@@ -1,7 +1,7 @@
 from .backends import Backend
-from .definitions import Result, Record, Data, Domain, RRType
+from .definitions import Result, Record, Domain, RRType, Tag
 from .mule import DNSMule
-from .plugins import Plugin
+from .plugins import Plugin, Plugins
 from .rules import Rules, DynamicRule, RegexRule, Rule
 
-__version__ = '0.2.0'
+__version__ = '0.5.0'

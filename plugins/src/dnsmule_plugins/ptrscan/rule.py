@@ -1,11 +1,13 @@
 import ipaddress
 
 from dnsmule import DNSMule
-from dnsmule.definitions import Record, Result, RRType, Domain
+from dnsmule.definitions import Record, RRType, Domain, Tag
 from dnsmule.rules import Rule
 
 
 class PTRScan(Rule):
+    _id = 'ip.ptr'
+
     _mule: DNSMule
 
     @staticmethod
@@ -21,9 +23,8 @@ class PTRScan(Rule):
     def reverse_query(ip: str) -> Domain:
         return Domain(ipaddress.ip_address(ip).reverse_pointer)
 
-    async def __call__(self, record: Record) -> Result:
-        result = Result(domain=record.domain)
-        address = record.data.to_text()
+    def __call__(self, record: Record):
+        address = record.text
         ptr_patterns = [
             '-'.join(reversed(address.split('.'))),
             '.'.join(reversed(address.split('.'))),
@@ -31,9 +32,9 @@ class PTRScan(Rule):
             '-'.join(address.split('.')),
         ]
         ptrs = [
-            ptr.data.to_text()
-            async for ptr in self._mule.backend.run_single(
-                self.reverse_query(record.data.to_text()),
+            ptr.text
+            for ptr in self._mule.backend.single(
+                self.reverse_query(record.text),
                 RRType.PTR,
             )
         ]
@@ -45,14 +46,16 @@ class PTRScan(Rule):
                             _id = ptr.removeprefix(pattern)
                         else:
                             _id = ptr.partition(pattern)[2]
-                        result.tags.add(f'IP::PTR::{self.name.upper()}::{_id.strip(".").upper()}')
+                        record.tag(Tag(f'IP::PTR::{self.name.upper()}::{_id.strip(".").upper()}'))
                         break
-            existing_result = record.result()
             existing = set()
-            if 'resolvedPointers' in existing_result.data:
-                existing.update(existing_result.data['resolvedPointers'])
-            result.data['resolvedPointers'] = [p for p in ptrs if p not in existing]
-        return result
+            if 'resolvedPointers' in record.result.data:
+                existing.update(record.result.data['resolvedPointers'])
+            value = []
+            value.extend(existing)
+            value.extend(p for p in ptrs if p not in existing)
+            record.result.data['resolvedPointers'] = value
+        return record.result
 
 
 __all__ = [

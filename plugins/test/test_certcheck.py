@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from dnsmule import Record, RRType
+from dnsmule import Record, RRType, Result, Domain
 from dnsmule_plugins.certcheck import rule
 from dnsmule_plugins.certcheck.certificates import Certificate
 
@@ -15,7 +15,7 @@ def mock_collection(monkeypatch):
         yield result
 
 
-def test_certcheck_rule_creator_returns_callable():
+def test_rule_creator_returns_callable():
     def dummy():
         pass
 
@@ -25,15 +25,16 @@ def test_certcheck_rule_creator_returns_callable():
     assert creator()._callback is dummy, 'Failed to bind callback'
 
 
-def test_certcheck_call(mock_collection):
+def test_call(mock_collection):
     check = rule.CertChecker()
-    r = Record('', RRType.A, '')
-    assert check(r)['resolvedCertificates'] == [], 'Failed to produce output'
+    r = Record(Domain(''), RRType.A, '')
+    assert check(r).data['resolvedCertificates'] == [], 'Failed to produce output'
 
 
-def test_certcheck_call_add_domains(mock_collection):
+def test_call_add_certs(mock_collection):
     check = rule.CertChecker(ports=[443])
-    r = Record('', RRType.A, '')
+    r = Record(Domain(''), RRType.A, '')
+    r.existing = Result(Domain(''))
 
     cert1 = Certificate(
         version='v3',
@@ -53,18 +54,18 @@ def test_certcheck_call_add_domains(mock_collection):
         issuer='',
     )
 
-    r.result()['resolvedCertificates'] = [cert1.to_json()]
+    r.existing.data['resolvedCertificates'] = [cert1.to_json()]
     mock_collection.append(cert2)
     mock_collection.append(cert1)
 
     result = check(r)
-    certs = result['resolvedCertificates']
-    assert len((check(r) + r.result()).data['resolvedCertificates']) == 2, 'Failed to remove duplicates'
-    assert cert1.to_json() not in certs, 'Appended existing data'
+    certs = result.data['resolvedCertificates']
+    assert len((check(r)).data['resolvedCertificates']) == 2, 'Failed to remove duplicates'
+    assert cert1.to_json() in certs, 'Failed to append existing data'
     assert cert2.to_json() in certs, 'Failed to append data'
 
 
-def test_certcheck_callback_with_domains(mock_collection):
+def test_callback_with_domains(mock_collection):
     result = set()
 
     def callback(*domains):
@@ -72,7 +73,7 @@ def test_certcheck_callback_with_domains(mock_collection):
 
     check = rule.CertChecker.creator(callback)(ports=[443], callback=True)
 
-    r = Record('', RRType.A, '')
+    r = Record(Domain(''), RRType.A, '')
 
     cert1 = Certificate(
         version='v3',

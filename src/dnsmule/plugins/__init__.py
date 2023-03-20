@@ -1,1 +1,1 @@
-from .abstract import Plugin
+from .abstract import Plugin, Plugins

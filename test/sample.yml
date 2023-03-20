@@ -1,0 +1,15 @@
+version: '1.0.0'
+backend:
+  name: 'noop.NOOPBackend'
+storage:
+  name: 'dictstorage.DictStorage'
+plugins:
+  - name: dnsmule.plugins.noop.NOOPPlugin
+    config:
+      hello: 'world'
+rules:
+  - name: regex_test
+    record: 'TXT'
+    type: 'dns.regex'
+    config:
+      pattern: 'a'

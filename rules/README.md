@@ -39,9 +39,9 @@ rules: Rules
 
 @rules.add.A[10]
 async def my_scan(record: Record) -> Result:
-    from dnsmule.config import get_logger
+    from dnsmule.logger import get_logger
     get_logger().info('Address %s', record)
-    return record.identify('MY::SCAN')
+    return record.tag('MY::SCAN')
 
 
 @rules.register('my.rule')

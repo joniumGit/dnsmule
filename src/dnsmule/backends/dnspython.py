@@ -1,102 +1,105 @@
-from typing import Union, Dict, AsyncGenerator, Any, Callable, Coroutine, Generator
+from os import getenv
+from random import choice
+from typing import Dict, Any, Callable, Coroutine, Iterable
 
-from dns.asyncquery import udp_with_fallback, https, quic, udp, tcp, tls
-from dns.exception import Timeout
+from dns.exception import DNSException
 from dns.message import Message, make_query
-from dns.name import Name
+from dns.query import udp_with_fallback, https, quic, udp, tcp, tls
 from dns.rdata import Rdata
 from dns.rdatatype import RdataType
 from dns.rrset import RRset
 
 from .abstract import Backend
-from ..config import get_logger, defaults
-from ..definitions import Record, RRType, Data, Domain
+from ..definitions import Record, RRType, Domain
+from ..logger import get_logger
 
-_Querier = Callable[..., Coroutine[Any, Any, Message]]
+Querier = Callable[..., Coroutine[Any, Any, Message]]
 
 
-async def _default_query(query: Message, *args, **kwargs):
-    response, used_tcp = await udp_with_fallback(query, *args, **kwargs)
+def default_query(query: Message, *args, **kwargs):
+    response, used_tcp = udp_with_fallback(query, *args, **kwargs)
     if used_tcp:
         get_logger().debug('Used TCP fallback query\n%s', query)
     return response
 
 
+def message_to_record(message: Message) -> Iterable[Record]:
+    result_set: RRset
+    record_data: Rdata
+    from itertools import chain
+    for result_set in chain(message.answer, message.additional):
+        for record_data in result_set:
+            rtype = RRType.from_any(record_data.rdtype)
+            yield DNSPythonRecord(
+                type=rtype,
+                domain=Domain(result_set.name.to_text(omit_final_dot=True)),
+                data=record_data,
+            )
+
+
+class DNSPythonRecord(Record):
+    data: Rdata
+
+    @property
+    def text(self) -> str:
+        return self.data.to_text().removeprefix('"').removesuffix('"')
+
+    def __getattr__(self, item):
+        return getattr(self.data, item)
+
+
 class DNSPythonBackend(Backend):
-    _MODE_MAPPING: Dict[str, _Querier] = {
+    _SUPPORTED_QUERY_TYPES: Dict[str, Querier] = {
         'tcp': tcp,
         'udp': udp,
         'tls': tls,
-        'http': https,
         'quic': quic,
-        'default': _default_query,
+        'https': https,
+        'default': default_query,
     }
+
+    _DEFAULT_RESOLVER = getenv('DNSMULE_DEFAULT_RESOLVER', choice([
+        '208.67.222.222',
+        '208.67.220.220',
+        '1.1.1.1',
+        '1.0.0.1',
+        '8.8.8.8',
+        '8.8.4.4',
+    ]))
 
     timeout: float = 2
     querier: str = 'default'
-    resolver: str = defaults.DEFAULT_RESOLVER
-    _querier: _Querier
+    resolver: str = _DEFAULT_RESOLVER
+
+    _querier: Querier
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         try:
-            self._querier = DNSPythonBackend._MODE_MAPPING[self.querier]
+            self._querier = DNSPythonBackend._SUPPORTED_QUERY_TYPES[self.querier]
         except KeyError:
             raise ValueError(f'Invalid query mode ({self.querier})')
-        self.enable_data_extension()
 
-    async def dns_query(
+    def _dns_query(
             self,
-            host: Union[str, Name],
+            host: str,
             *types: int,
-    ) -> AsyncGenerator[Any, Message]:
+    ) -> Iterable[Message]:
         for dns_type in types:
-            dns_type = RdataType.make(dns_type)
-            query = make_query(host, dns_type)
-            get_logger().debug('%s\n%s', 'Starting query', query)
+            query = make_query(host, RdataType.make(dns_type))
             try:
-                response = await self._querier(query, self.resolver, timeout=self.timeout)
+                response = self._querier(query, self.resolver, timeout=self.timeout)
                 yield response
-            except Timeout:
-                get_logger().error('%s\n%s', 'Timed out query', query)
+            except DNSException:
+                get_logger().error('%s\n%s', 'Failed query', query)
 
-    @staticmethod
-    def _process_message(
-            domain: Domain,
-            message: Message,
-    ) -> Generator[Record, Any, Any]:
-        """Processes a dns message
-        """
-        result_set: RRset
-        record_data: Rdata
-        for result_set in message.answer:
-            for record_data in result_set:
-                rtype = RRType.from_any(record_data.rdtype)
-                yield Record(
-                    type=rtype,
-                    domain=domain,
-                    data=Data(
-                        type=rtype,
-                        value=record_data.to_text().removesuffix('"').removeprefix('"'),
-                        original=record_data,
-                    ),
-                )
-
-    async def process(self, target: Domain, *types: RRType) -> AsyncGenerator[Record, Any]:
-        async for message in self.dns_query(target.name, *iter(RdataType.make(t) for t in types)):
-            for record in self._process_message(target, message):
+    def _query(self, target: Domain, *types: RRType) -> Iterable[Record]:
+        for message in self._dns_query(target, *types):
+            for record in message_to_record(message):
                 yield record
-
-    @staticmethod
-    def enable_data_extension():
-
-        def _getattr(self: Data, item: str):
-            if 'original' in self.data:
-                return getattr(self.data['original'], item)
-
-        Data.register_adapter(_getattr)
 
 
 __all__ = [
     'DNSPythonBackend',
+    'DNSPythonRecord',
 ]

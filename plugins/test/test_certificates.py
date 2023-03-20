@@ -4,6 +4,7 @@ import ssl
 import sys
 from textwrap import dedent
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
@@ -85,7 +86,6 @@ SAMPLE_CERTS = [
 @pytest.fixture
 def mock_cert_cryptography(monkeypatch):
     with monkeypatch.context() as m:
-        import ssl
         m.setattr(ssl, 'get_server_certificate', lambda *_, **__: SAMPLE_CERTS[0])
 
         yield
@@ -94,7 +94,6 @@ def mock_cert_cryptography(monkeypatch):
 @pytest.fixture
 def mock_cert_stdlib(monkeypatch):
     with monkeypatch.context() as m:
-        import ssl
         m.setattr(ssl.SSLSocket, 'getpeercert', lambda *_, **__: SAMPLE_CERTS[1])
         m.setattr(ssl.SSLSocket, 'connect', lambda *_, **__: None)
 
@@ -115,19 +114,19 @@ def mock_cert_stdlib(monkeypatch):
          'alt2.common',
      ])
 ])
-def test_certificates_collect_certificate_return(cert, result):
+def test_collect_certificate_return(cert: Any, result):
     assert certificates.resolve_domain_from_certificate(cert) == result
 
 
 @pytest.mark.skipif(NO_CRYPTOGRAPHY, reason='No cryptography installed')
-def test_certificates_collect_certs_same_result(mock_cert_cryptography, mock_cert_stdlib):
+def test_collect_certs_same_result(mock_cert_cryptography, mock_cert_stdlib):
     c1 = certificates.collect_certificate(EXAMPLE_ADDRESS, timeout=.5)
     c2 = certificates.collect_certificate(EXAMPLE_ADDRESS, prefer_stdlib=False, timeout=.5)
     assert c1 == c2
 
 
 @pytest.mark.skipif(NO_CRYPTOGRAPHY, reason='No cryptography installed')
-def test_certificates_collect_certs_crypto_no_extension(mock_cert_cryptography, monkeypatch):
+def test_collect_certs_crypto_no_extension(mock_cert_cryptography, monkeypatch):
     from cryptography.x509.extensions import ExtensionNotFound, ExtensionOID, Extensions
 
     def dummy(*_, **__):
@@ -140,19 +139,19 @@ def test_certificates_collect_certs_crypto_no_extension(mock_cert_cryptography, 
     assert len(c.alts) == 0, 'Failed'
 
 
-def test_certificates_collect_error_none():
+def test_collect_error_none():
     c1 = certificates.collect_certificate_stdlib(EXAMPLE_ADDRESS, timeout=.1)
     c2 = certificates.collect_certificate_cryptography(EXAMPLE_ADDRESS, timeout=.1)
     c3 = certificates.collect_certificate(EXAMPLE_ADDRESS, timeout=.1)
     assert c1 is c2 is c3 is None
 
 
-def test_certificates_massage_handles_falsy():
+def test_massage_handles_falsy():
     assert certificates.massage_certificate_stdlib({}) is None
     assert certificates.massage_certificate_stdlib(None) is None
 
 
-def test_certificates_import_error(monkeypatch):
+def test_import_error(monkeypatch):
     with monkeypatch.context() as m:
         m.setitem(sys.modules, 'cryptography', None)
         m.setattr(certificates, 'collect_certificate_cryptography', None)
@@ -160,7 +159,7 @@ def test_certificates_import_error(monkeypatch):
     assert cert is None, 'Failed to pass on exception'
 
 
-def test_certificates_import_error_2(monkeypatch):
+def test_import_error_2(monkeypatch):
     def thrower(*_, **__):
         raise ImportError()
 
@@ -177,7 +176,7 @@ def test_certificates_import_error_2(monkeypatch):
     assert cert is None, 'Failed to pass on exception'
 
 
-def test_certificates_collect_certificates(monkeypatch, mock_cert_stdlib):
+def test_collect_certificates(monkeypatch, mock_cert_stdlib):
     with monkeypatch.context() as m:
         m.setattr(socket, 'getaddrinfo', lambda *_, **__: [
             (
@@ -188,13 +187,12 @@ def test_certificates_collect_certificates(monkeypatch, mock_cert_stdlib):
                 EXAMPLE_ADDRESS.tuple,
             )
         ])
-
         certs = certificates.collect_certificates(*EXAMPLE_ADDRESS.tuple)
 
     assert len(certs) == 1, 'Failed to call get certificate'
 
 
-def test_certificates_collect_certificates_none(monkeypatch, mock_cert_stdlib):
+def test_collect_none(monkeypatch, mock_cert_stdlib):
     with monkeypatch.context() as m:
         m.setattr(socket, 'getaddrinfo', lambda *_, **__: [
             (
@@ -212,7 +210,7 @@ def test_certificates_collect_certificates_none(monkeypatch, mock_cert_stdlib):
     assert len(certs) == 0, 'Failed to skip none value'
 
 
-def test_certificates_collect_certificates_raising_gets_empty(monkeypatch):
+def test_collect_raising_gets_empty(monkeypatch):
     def dummy(*_, **__):
         raise socket.error()
 

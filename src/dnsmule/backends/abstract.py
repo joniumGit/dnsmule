@@ -1,46 +1,31 @@
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator, Any, Union, Iterable
+from typing import Iterable
 
 from ..definitions import Domain, RRType, Record
+from ..utils import KwargClass
 
 
-class Backend(ABC):
+class Backend(KwargClass, ABC):
 
-    def __init__(self, **kwargs):
-        self.__dict__.update({
-            k: v
-            for k, v in kwargs.items()
-            if not k.startswith('_')
-        })
-
-    async def run(self, targets: Iterable[Union[str, Domain]], *types: RRType) -> AsyncGenerator[Record, Any]:
+    def run(self, targets: Iterable[Domain], *types: RRType) -> Iterable[Record]:
+        """Run DNS queries for given domains
+        """
         for target in targets:
-            async for record in self.run_single(target, *types):
+            for record in self.single(target, *types):
                 yield record
 
-    async def run_single(self, target: Union[str, Domain], *types: RRType) -> AsyncGenerator[Record, Any]:
-        async for record in self.process(
-                target if isinstance(target, Domain) else Domain(target),
-                *types
-        ):
+    def single(self, target: Domain, *types: RRType) -> Iterable[Record]:
+        """Run a DNS query for a single domain
+        """
+        for record in self._query(target, *types):
             yield record
 
     @abstractmethod
-    def process(self, target: Domain, *types: RRType) -> AsyncGenerator[Record, Any]:
+    def _query(self, target: Domain, *types: RRType) -> Iterable[Record]:
         """Abstract method for processing queries and producing records
         """
 
-    async def __aenter__(self):
-        await self.start()
-        return self
 
-    async def __aexit__(self, *_):
-        await self.stop()
-
-    async def start(self) -> None:
-        """Startup method
-        """
-
-    async def stop(self) -> None:
-        """Cleanup method
-        """
+__all__ = [
+    'Backend',
+]

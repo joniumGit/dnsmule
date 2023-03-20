@@ -1,9 +1,10 @@
 import datetime
 import socket
+import ssl
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from dnsmule.config import get_logger
+from dnsmule.logger import get_logger
 
 
 @dataclass(frozen=True, eq=True)
@@ -44,7 +45,6 @@ class Address:
 
 
 def collect_certificate_cryptography(address: Address, timeout: float):
-    import ssl
     try:
         from cryptography.x509 import load_pem_x509_certificates
         from cryptography.x509.oid import NameOID
@@ -72,7 +72,7 @@ def collect_certificate_cryptography(address: Address, timeout: float):
         get_logger().warning(
             'CERTS-CRYPTOGRAPHY: Failed to get cert for %s:%s (%s)',
             *address.tuple[0:2],
-            type(e).__name__,
+            repr(e),
         )
 
 
@@ -92,7 +92,6 @@ def issuer_str(issuer):
 
 def massage_certificate_stdlib(certificate):
     if certificate:
-        import ssl
         return {
             'common': next(
                 value
@@ -117,8 +116,6 @@ def massage_certificate_stdlib(certificate):
 
 
 def collect_certificate_stdlib(address: Address, timeout: float):
-    import ssl
-    import socket
     try:
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
@@ -131,7 +128,7 @@ def collect_certificate_stdlib(address: Address, timeout: float):
         get_logger().warning(
             'CERTS-STDLIB: Failed to get cert for %s:%s (%s)',
             *address.tuple[0:2],
-            type(e).__name__,
+            repr(e),
         )
 
 
@@ -154,7 +151,6 @@ def collect_certificate(
 
 
 def collect_certificates(host: str, port: int, **kwargs) -> List[Certificate]:
-    import socket
     out = []
     try:
         for family, _, _, _, info in socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP):

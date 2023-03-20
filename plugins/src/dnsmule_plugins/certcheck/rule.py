@@ -1,12 +1,13 @@
-from typing import Callable, Collection, List
+from typing import Callable, Collection, List, Optional
 
-from dnsmule.definitions import Record, Result
-from dnsmule.rules import Rule
+from dnsmule import Rule, Result, Record
 from dnsmule.utils import process_domains
 from . import certificates
 
 
 class CertChecker(Rule):
+    _id = 'ip.certs'
+
     ports: List[int] = [443, 8443]
     timeout: float = 1
     stdlib: bool = False
@@ -15,7 +16,7 @@ class CertChecker(Rule):
     _callback: Callable[[str, ...], None]
 
     @staticmethod
-    def creator(callback: Callable[[Collection[str]], None]):
+    def creator(callback: Optional[Callable[[Collection[str]], None]]):
 
         def registerer(**kwargs):
             rule = CertChecker(**kwargs)
@@ -25,7 +26,7 @@ class CertChecker(Rule):
         return registerer
 
     def __call__(self, record: Record) -> Result:
-        address: str = record.data.to_text()
+        address: str = record.text
         certs = set()
         for port in self.ports:
             certs.update(
@@ -41,15 +42,20 @@ class CertChecker(Rule):
             for cert in certs
             for domain in certificates.resolve_domain_from_certificate(cert)
         )]
-        existing_result = record.result()
         existing = set()
-        if 'resolvedCertificates' in existing_result.data:
-            existing.update(certificates.Certificate.from_json(d) for d in existing_result.data['resolvedCertificates'])
-        result = Result(existing_result.domain)
-        result.data['resolvedCertificates'] = [c.to_json() for c in certs if c not in existing]
+        if 'resolvedCertificates' in record.result.data:
+            existing.update(
+                certificates.Certificate.from_json(d)
+                for d in record.result.data['resolvedCertificates']
+            )
+
+        value = []
+        value.extend(existing)
+        value.extend(c.to_json() for c in certs if c not in existing)
+        record.result.data['resolvedCertificates'] = value
         if self.callback:
             self._callback(*domains)
-        return result
+        return record.result
 
 
 __all__ = [

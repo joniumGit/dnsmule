@@ -8,9 +8,9 @@ from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, validator, ValidationError, Extra
 
-from dnsmule import DNSMule, RRType, __version__
-from dnsmule.config import get_logger
-from dnsmule.storage import ResultMapper
+from dnsmule import DNSMule, RRType, __version__, Domain
+from dnsmule.logger import get_logger
+from dnsmule.storages.kvstorage import result_to_json_data
 
 app = FastAPI(
     default_response_class=Response,
@@ -46,15 +46,15 @@ def get_mule() -> DNSMule:
     return app.state.mule
 
 
-def get_backend():  # pragma: nocover this will be removed
+def get_storage():  # pragma: nocover this will be removed
     try:
-        from dnsmule.storage.redisstorage import RedisStorage
+        from dnsmule.storages.redisstorage import RedisStorage
         driver = RedisStorage(host='127.0.0.1')
-        driver.get_client().ping()
+        driver.client.ping()
         get_logger().info('Using redis storage')
     except Exception as e:
         get_logger().error('Failed to use redis storage', exc_info=e)
-        from dnsmule.storage.dictstorage import DictStorage
+        from dnsmule.storages.dictstorage import DictStorage
         driver = DictStorage()
     return driver
 
@@ -63,7 +63,9 @@ def get_backend():  # pragma: nocover this will be removed
 def startup():
     get_logger().addHandler(StreamHandler())
     get_logger().setLevel(INFO)
-    mule = DNSMule(file=rules, storage=get_backend())
+    mule = DNSMule.load(file=rules)
+    mule.storage = get_storage()
+
     app.state.mule = mule
 
 
@@ -227,8 +229,8 @@ _RECORD_VALIDATION_EXAMPLE: Dict[str, Any] = {
         },
     },
 )
-async def scan_domain(tasks: BackgroundTasks, domain: str = domain_query(), mule: DNSMule = Depends(get_mule)):
-    tasks.add_task(mule.run, domain)
+def scan_domain(tasks: BackgroundTasks, domain: str = domain_query(), mule: DNSMule = Depends(get_mule)):
+    tasks.add_task(mule.scan, domain)
 
 
 @app.get(
@@ -292,16 +294,17 @@ async def scan_domain(tasks: BackgroundTasks, domain: str = domain_query(), mule
     },
 )
 def get_domain(domain: str = domain_query(None), mule: DNSMule = Depends(get_mule)):
+    domain: Domain
     if domain:
-        if domain in mule:
-            return ResultMapper.to_json(mule[domain])
+        if mule.storage.contains(domain):
+            return result_to_json_data(mule.storage.fetch(domain))
         else:
             return Response(status_code=404)
     else:
         return {
             'results': [
-                ResultMapper.to_json(result)
-                for result in mule.values()
+                result_to_json_data(result)
+                for result in mule.storage.results()
             ]
         }
 
@@ -320,7 +323,7 @@ def get_rules(mule: DNSMule = Depends(get_mule)):
             rule.name
             for rule in collection
         ]
-        for record, collection in mule.rules.items()
+        for record, collection in mule.rules.iterate()
         if collection
     }
 
@@ -384,15 +387,14 @@ def get_rules(mule: DNSMule = Depends(get_mule)):
     }
 )
 def create_rule(response: Response, definition: RuleDefinition, mule: DNSMule = Depends(get_mule)):
-    if mule.rules.has_rule(definition.record, definition.name):
+    if mule.rules.contains(definition.record, definition.name):
         response.status_code = 409
     else:
         try:
             definition.config['name'] = definition.name
-            rule = mule.rules.create_rule(definition.type, definition.config)
-            mule.rules.add_rule(definition.record, rule)
+            rule = mule.rules.create(definition.type, definition.config)
+            mule.rules.append(definition.record, rule)
         except KeyError as e:
-
             return JSONResponse({
                 'detail': [
                     {
@@ -441,7 +443,7 @@ def create_rule(response: Response, definition: RuleDefinition, mule: DNSMule = 
 )
 def delete_rule(query: RuleQuery = Depends(), mule: DNSMule = Depends(get_mule)):
     deleted = False
-    for rtype, collection in mule.rules.items():
+    for rtype, collection in mule.rules.iterate():
         if not query.record or rtype == query.record:
             to_remove = []
             for item in collection:
@@ -471,10 +473,10 @@ def delete_rule(query: RuleQuery = Depends(), mule: DNSMule = Depends(get_mule))
     },
 )
 def rescan(tasks: BackgroundTasks, response: Response, mule: DNSMule = Depends(get_mule)):
-    domains = mule.domains()
+    domains = [*mule.storage.domains()]
     response.headers['scan-count'] = str(len(domains))
     for domain in domains:
-        tasks.add_task(mule.run, domain)
+        tasks.add_task(mule.scan, domain)
 
 
 @app.get(

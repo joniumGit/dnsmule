@@ -1,75 +1,19 @@
-from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import Dict, List, Any, Type, TypeVar, Union, Optional, cast, Callable, Generic
+from typing import Dict, List, Any, Type, TypeVar, Union, cast, TYPE_CHECKING
 
 from .backends import Backend
-from .backends.noop import NOOPBackend
-from .config import get_logger
 from .definitions import RRType
+from .logger import get_logger
 from .plugins import Plugin
 from .rules import Rules, DynamicRule
 from .rules.entities import RuleFactory
-from .storage import Storage
-from .storage.dictstorage import DictStorage
+from .storages import Storage
+
+if TYPE_CHECKING:  # pragma: nocover
+    from .mule import DNSMule
 
 T = TypeVar('T')
-
-
-@dataclass
-class Initializer(Generic[T]):
-    type: str
-    f: Callable[[...], T]
-
-    def __call__(self, *args, **kwargs):
-        return self.f(*args, **kwargs)
-
-
-@dataclass
-class Config:
-    rules: Optional[Initializer[Rules]]
-    backend: Optional[Initializer[Backend]]
-    plugins: Optional[List[Initializer[Plugin]]]
-    storage: Optional[Initializer[Storage]]
-
-
-def load_and_append_rule(
-        rules: Rules,
-        record: RRType,
-        rule_type: str,
-        config: Dict[str, Any],
-) -> None:
-    """Creates a rule from rule definition
-
-    Initializes any dynamic rules created and passes the add_rule callback to them
-    """
-    rule = rules.create_rule(rule_type, config)
-    if isinstance(rule, DynamicRule):
-        rule.init(cast(RuleFactory, partial(load_and_append_rule, rules)))
-    rules.add_rule(record, rule)
-
-
-def load_rules(config: List[Dict[str, Any]], rules: Rules = None) -> Rules:
-    """Loads rules from the rules element in rules.yml
-
-    Provider rules in case of non-default handlers.
-    """
-    rules = Rules() if rules is None else rules
-    for rule_definition in config:
-        record = RRType.from_any(rule_definition['record'])
-        config = rule_definition.get('config', {})
-        rtype = rule_definition['type']
-        name = rule_definition['name']
-        if 'name' not in config:
-            config['name'] = name
-        if not rules.has_rule(record, name):
-            try:
-                load_and_append_rule(rules, record, rtype, config)
-            except KeyError as e:
-                get_logger().error(f'Failed to load rule: {rtype} RuleTypeNotFound({e})')
-        else:
-            raise ValueError(f'Can not add duplicate rule: {name} ({rtype})')
-    return rules
 
 
 def import_class(import_string: str, parent: Type[T], relative: bool = True, package: str = None) -> Type[T]:
@@ -114,74 +58,91 @@ def import_full(
     return result
 
 
-def make_backend(document: Dict[str, Any]) -> Initializer[Backend]:
-    """Loads backend from yaml config
+def load_and_append_rule(
+        rules: Rules,
+        record: RRType,
+        rule_type: str,
+        config: Dict[str, Any],
+) -> None:
+    """Creates a rule from rule definition
+
+    Initializes any dynamic rules created and passes the add_rule callback to them
     """
-    backend: Dict[str, Any] = document.get('backend', None)
-    if backend:
-        backend_type = backend['name']
-        backend_config = backend.get('config', {})
-        backend_class = import_full(backend_type, Backend, 'dnsmule.backends')
-        return Initializer(type=backend_type, f=partial(backend_class, **backend_config))
-    else:
-        return Initializer(type=NOOPBackend.__name__, f=NOOPBackend)
+    rule = rules.create(rule_type, config)
+    if isinstance(rule, DynamicRule):
+        rule.init(cast(RuleFactory, partial(load_and_append_rule, rules)))
+    rules.append(record, rule)
 
 
-def make_rules(document: Dict[str, Any]) -> Initializer[Rules]:
-    """Loads rules from yaml config
-    """
-    config: List[Dict[str, Any]] = document.get('rules', [])
-    return Initializer(type='Rules', f=partial(load_rules, config))
+class ConfigLoader:
+    mule: 'DNSMule'
+    config: Dict[str, Union[List[Dict[str, Any]], Dict[str, Any]]]
 
+    def __init__(self, mule: 'DNSMule'):
+        self.mule = mule
 
-def make_plugins(document: Dict[str, Any]) -> List[Initializer[Plugin]]:
-    """Loads plugins from yaml config
-    """
-    plugins: List[Dict[str, Any]] = document.get('plugins', [])
-    out: List[Initializer[Plugin]] = []
-    for plugin in plugins:
-        plugin_type = plugin['name']
-        plugin_config = plugin.get('config', {})
-        try:
-            plugin_class = import_class(plugin_type, Plugin, relative=False)
-            out.append(Initializer(type=plugin_type, f=partial(plugin_class, **plugin_config)))
-        except ImportError as e:
-            get_logger().error(f'Failed to load plugin: {plugin_type} PluginNotFound({e})')
-    return out
+    def set_storage(self):
+        storage_definition: Dict[str, Any] = self.config.get('storage', {})
+        if storage_definition:
+            storage_type = storage_definition['name']
+            storage_class = import_full(storage_type, Storage, 'dnsmule.storages')
+            self.mule.storage = storage_class(**storage_definition.get('config', {}))
 
+    def set_backend(self):
+        backend_definition: Dict[str, Any] = self.config.get('backend', {})
+        if backend_definition:
+            backend_type = backend_definition['name']
+            backend_class = import_full(backend_type, Backend, 'dnsmule.backends')
+            self.mule.backend = backend_class(**backend_definition.get('config', {}))
 
-def make_storage(document: Dict[str, Any]) -> Initializer[Storage]:
-    storage = document.get('storage', {})
-    if storage:
-        storage_type = storage['name']
-        storage_class = import_full(storage_type, Storage, 'dnsmule.storage')
-        return Initializer(type=storage_type, f=partial(storage_class, **storage.get('config', {})))
-    else:
-        return Initializer(type='DictStorage', f=DictStorage)
+    def append_rules(self):
+        rule_definitions: List[Dict[str, Any]] = self.config.get('rules', [])
+        if rule_definitions:
+            for rule_definition in rule_definitions:
+                record = RRType.from_any(rule_definition['record'])
+                config = rule_definition.get('config', {})
+                rtype = rule_definition['type']
+                name = rule_definition['name']
+                if 'name' not in config:
+                    config['name'] = name
+                if not self.mule.rules.contains(record, name):
+                    try:
+                        load_and_append_rule(self.mule.rules, record, rtype, config)
+                    except KeyError as e:
+                        get_logger().error(f'Failed to load rule type {rtype}, {name}: {repr(e)}')
+                    except Exception as e:
+                        get_logger().error(f'Failed to load rule {rtype}, {name}', exc_info=e)
+                else:
+                    raise ValueError(f'Can not add duplicate rule: {name} ({rtype})')
 
+    def append_plugins(self):
+        plugin_definitions: List[Dict[str, Any]] = self.config.get('plugins', [])
+        if plugin_definitions:
+            for plugin in plugin_definitions:
+                plugin_type = plugin['name']
+                plugin_config = plugin.get('config', {})
+                try:
+                    plugin_class = import_class(plugin_type, Plugin, relative=False)
+                    if not self.mule.plugins.contains(plugin_class):
+                        plugin = plugin_class(**plugin_config)
+                        self.mule.plugins.add(plugin)
+                        plugin.register(self.mule)
+                except ImportError as e:
+                    get_logger().error(f'Failed to load plugin: {plugin_type}', exc_info=e)
 
-def load_config(
-        file: Union[str, Path],
-        rules: bool = True,
-        backend: bool = True,
-        plugins: bool = True,
-        storage: bool = True,
-) -> Config:
-    """Loads a yaml config
-    """
-    import yaml
-    with open(file, 'r') as f:
-        document = yaml.safe_load(f)
-        return Config(
-            plugins=make_plugins(document) if plugins else None,
-            backend=make_backend(document) if backend else None,
-            rules=make_rules(document) if rules else None,
-            storage=make_storage(document) if storage else None,
-        )
+    def load_config(self, file: Union[str, Path]):
+        import yaml
+        with open(file, 'r') as f:
+            self.config = yaml.safe_load(f)
+
+    def all(self):
+        self.append_plugins()
+        self.append_rules()
+        self.set_storage()
+        self.set_backend()
 
 
 __all__ = [
-    'load_config',
-    'Config',
     'load_and_append_rule',
+    'ConfigLoader',
 ]

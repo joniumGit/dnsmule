@@ -1,16 +1,15 @@
-from typing import AsyncGenerator, Any
+from typing import Iterable
 
 from .abstract import Backend
-from .. import RRType
-from ..definitions import Domain, Record
+from ..definitions import Domain, Record, RRType
+from ..utils import empty
 
 
 class NOOPBackend(Backend):
 
-    async def process(self, target: Domain, *types: RRType) -> AsyncGenerator[Record, Any]:  # pragma: nocover
+    def _query(self, target: Domain, *types: RRType) -> Iterable[Record]:
         """No-op"""
-        for o in []:
-            yield o
+        yield from empty()
 
 
 __all__ = [

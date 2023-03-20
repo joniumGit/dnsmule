@@ -1,16 +1,15 @@
-from typing import Dict, Callable, Any
+from typing import Dict, Callable, Any, Optional, Union, Type
 
 from ..definitions import RRType, Record, Result
-from ..utils import KwargClass, Comparable
+from ..utils import KwargClass, Comparable, Identifiable
 
-RuleFunction = Callable[[Record], Result]
+RuleFunction = Callable[[Record], Union[Result, None]]
 
 
-class Rule(KwargClass, Comparable):
+class Rule(KwargClass, Comparable, Identifiable):
     """Wrapper class for rules to support priority based comparison
     """
     f: RuleFunction
-
     name: str = None
     priority: int = 0
 
@@ -30,7 +29,7 @@ class Rule(KwargClass, Comparable):
         if not self.name and hasattr(self.f, '__name__'):
             self.name = self.f.__name__
 
-    def __call__(self, record: Record):
+    def __call__(self, record: Record) -> Optional[Result]:
         if self.f == self.__call__:
             raise RecursionError('Illegal state, infinite recursion detected')
         return self.f(record)
@@ -45,7 +44,7 @@ class Rule(KwargClass, Comparable):
         return self.priority > other.priority
 
 
-RuleFactory = Callable[[RRType, str, Dict[str, Any]], Rule]
+RuleFactory = Union[Type[Rule], Callable[[RRType, str, Dict[str, Any]], Rule]]
 
 
 class RuleCreator:
@@ -81,6 +80,7 @@ class RuleCreator:
 
 __all__ = [
     'Rule',
+    'RuleFunction',
     'RuleCreator',
     'RuleFactory',
 ]

@@ -1,6 +1,6 @@
-from typing import Dict, Any
+from typing import Dict, Any, Union, Type, Callable
 
-from .entities import Rule, RuleFactory
+from .entities import RuleFactory, Rule
 from .ruletypes import DynamicRule, RegexRule
 
 
@@ -9,29 +9,32 @@ class RuleFactoryMixIn:
 
     def __init__(self):
         self._factories = {}
-        add_default_factories(self)
+        self.register(RegexRule)
+        self.register(DynamicRule)
 
-    def create_rule(self, type_name: str, definition: Dict[str, Any]) -> Rule:
-        """Creates a rule from rule config
+    def create(self, type_name: str, definition: Dict[str, Any]) -> Rule:
+        """Creates a rule from rule logger
         """
         return self._factories[type_name](**definition)
 
-    def register(self, type_name: str):
+    def register(self, rule_type: Union[str, Type[Rule]]) -> Union[Callable[[RuleFactory], RuleFactory], None]:
         """Registers a handler for a rule type
         """
 
-        def decorator(f):
-            self._factories[type_name] = f
-            return f
+        if isinstance(rule_type, type):
+            if not issubclass(rule_type, Rule):
+                raise TypeError('Not a Rule')
+            self._factories[rule_type.id] = rule_type
+        else:
+            def decorator(f: RuleFactory) -> RuleFactory:
+                self._factories[rule_type] = f
+                return f
 
-        return decorator
-
-
-def add_default_factories(factory_storage: RuleFactoryMixIn) -> None:
-    factory_storage.register('dns.dynamic')(DynamicRule)
-    factory_storage.register('dns.regex')(RegexRule)
+            return decorator
 
 
 __all__ = [
     'RuleFactoryMixIn',
+    'RuleFactory',
+    'Rule',
 ]

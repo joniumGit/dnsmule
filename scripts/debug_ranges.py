@@ -1,16 +1,16 @@
 from dnsmule_plugins.ipranges.ranges import *
 
 
-async def debug_ip_ranges():
+def debug_ip_ranges():
     services = [
         *(
-            await fetch_google_ip_ranges()
+            fetch_google_ip_ranges()
         ),
         *(
-            await fetch_amazon_ip_ranges()
+            fetch_amazon_ip_ranges()
         ),
         *(
-            await fetch_microsoft_ip_ranges()
+            fetch_microsoft_ip_ranges()
         ),
     ]
 
@@ -33,12 +33,11 @@ async def debug_ip_ranges():
 
 
 if __name__ == '__main__':
-    import asyncio
     import logging
 
-    from dnsmule.config import get_logger
+    from dnsmule.logger import get_logger
 
     get_logger().setLevel(logging.DEBUG)
     get_logger().addHandler(logging.StreamHandler())
 
-    asyncio.run(debug_ip_ranges())
+    debug_ip_ranges()

@@ -225,9 +225,10 @@ definitions:
             from dnsmule.definitions import RRType, Record, Result
             
             def add_rule(
-                    record_type: Any,
+                    record_type: Union[str, int, RRType],
                     rule_type: str,
                     name: str,
+                    *,
                     priority: int = 0,
                     **options,
             ) -> None:

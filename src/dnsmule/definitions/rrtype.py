@@ -18,32 +18,31 @@ class RRType(IntEnum):
         for k, v in cls.__members__.items():
             if v == value:
                 return k
-        return f'RRType.of({value})'
-
-    @classmethod
-    def from_any(cls, value: Union[int, str, Any]) -> Union['RRType', int]:
-        if isinstance(value, str):
-            value = value.upper()
-            prefix = 'RRtype.of('.upper()
-            if value in cls.__members__:
-                return cls.__members__[value]
-            elif value.startswith(prefix):
-                value = int(value.removeprefix(prefix).removesuffix(')'))
-            else:
-                value = int(value)
-        RRType._check_range(value)
-        for k, v in cls.__members__.items():
-            if k == value or v == value:
-                return v
-        return int(value)
+        return str(value)
 
     @classmethod
     def from_text(cls, value: str) -> Union['RRType', int]:
-        return cls.from_any(value)
+        value = value.upper()
+        for v in cls.__members__.keys():
+            # Could be str derivative with different hash
+            if value == v:
+                return cls.__members__[v]
+        return cls.make(int(value))
 
     @classmethod
-    def of(cls, value: int) -> Union['RRType', int]:
-        return cls.from_any(value)
+    def make(cls, value: int):
+        RRType._check_range(value)
+        for v in cls.__members__.values():
+            if v == value:
+                return v
+        return value
+
+    @classmethod
+    def from_any(cls, value: Union[int, str, Any]) -> Union['RRType', int]:
+        if isinstance(value, int):
+            return cls.make(value)
+        else:
+            return cls.from_text(str(value))
 
     def __str__(self):
         return RRType.to_text(self)

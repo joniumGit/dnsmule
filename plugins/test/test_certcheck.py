@@ -28,7 +28,21 @@ def test_rule_creator_returns_callable():
 def test_call(mock_collection):
     check = rule.CertChecker()
     r = Record(Domain(''), RRType.A, '')
-    assert check(r).data['resolvedCertificates'] == [], 'Failed to produce output'
+    assert 'resolvedCertificates' not in check(r).data, 'Added key without data to add'
+
+
+def test_call_adds_key(mock_collection):
+    mock_collection.append(Certificate(
+        version='v3',
+        common='a.com',
+        alts=['b.com'],
+        valid_from=datetime.datetime.now(),
+        valid_until=datetime.datetime.now(),
+        issuer='',
+    ))
+    check = rule.CertChecker()
+    r = Record(Domain(''), RRType.A, '')
+    assert 'resolvedCertificates' in check(r).data, 'Failed to add key'
 
 
 def test_call_add_certs(mock_collection):
@@ -59,10 +73,14 @@ def test_call_add_certs(mock_collection):
     mock_collection.append(cert1)
 
     result = check(r)
-    certs = result.data['resolvedCertificates']
+
     assert len((check(r)).data['resolvedCertificates']) == 2, 'Failed to remove duplicates'
+
+    certs = result.data['resolvedCertificates']
     assert cert1.to_json() in certs, 'Failed to append existing data'
     assert cert2.to_json() in certs, 'Failed to append data'
+
+    assert len((check(r)).data['resolvedCertificates']) == 2, 'Failed to remove duplicates'
 
 
 def test_callback_with_domains(mock_collection):

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Dict, Any
+from typing import Union, Dict, Any, Iterable, Callable
 
 from .iterables import limit as limit_iterable
 
@@ -90,7 +90,26 @@ def lmerge(a: Dict[str, Any], b: Dict[str, Any]):
             a[k] += b[k]
 
 
+def extend_set(data: Dict[str, Any], key: str, values: Iterable[Any]):
+    target = []
+    if key in data:
+        values = [*data[key], *values]
+    for v in values:
+        if v not in target:
+            target.append(v)
+    data[key] = target
+
+
+def transform_set(data: Dict[str, Any], key: str, f: Callable[[Any], Any]):
+    if key in data:
+        data[key] = [f(o) for o in data[key]]
+    else:
+        data[key] = []
+
+
 __all__ = [
     'load_data',
     'lmerge',
+    'extend_set',
+    'transform_set',
 ]

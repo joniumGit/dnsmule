@@ -3,6 +3,7 @@ import ipaddress
 from dnsmule import DNSMule
 from dnsmule.definitions import Record, RRType, Domain, Tag
 from dnsmule.rules import Rule
+from dnsmule.utils import extend_set
 
 
 class PTRScan(Rule):
@@ -48,13 +49,7 @@ class PTRScan(Rule):
                             _id = ptr.partition(pattern)[2]
                         record.tag(Tag(f'IP::PTR::{self.name.upper()}::{_id.strip(".").upper()}'))
                         break
-            existing = set()
-            if 'resolvedPointers' in record.result.data:
-                existing.update(record.result.data['resolvedPointers'])
-            value = []
-            value.extend(existing)
-            value.extend(p for p in ptrs if p not in existing)
-            record.result.data['resolvedPointers'] = value
+            extend_set(record.result.data, 'resolvedPointers', ptrs)
         return record.result
 
 

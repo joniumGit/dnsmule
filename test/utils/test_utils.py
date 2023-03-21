@@ -94,3 +94,53 @@ def test_spread_domain_short():
 
 def test_spread_domain():
     assert [*spread_domain('a.b.c.fi')] == ['c.fi', 'b.c.fi', 'a.b.c.fi'], 'Failed to produce all domains'
+
+
+def test_extend_set_order():
+    store = {'key': ['a', 'b', 'c']}
+    extend_set(store, 'key', ['a', 'd', 'e'])
+    assert store['key'] == ['a', 'b', 'c', 'd', 'e'], 'Failed to add data in correct order'
+
+
+def test_extend_set_no_value():
+    store = {}
+    extend_set(store, 'key', ['a', 'b', 'c'])
+    assert store['key'] == ['a', 'b', 'c'], 'Failed to create key'
+
+
+def test_extend_set_no_change_old():
+    target = ['a', 'b', 'c']
+    store = {'key': ['a', 'b', 'c']}
+    extend_set(store, 'key', ['g', 'g', 'g'])
+    assert target == ['a', 'b', 'c'], 'Failed to persist old'
+
+
+def test_extend_set_de_duplicates_existing():
+    store = {'key': ['a', 'a', 'a']}
+    extend_set(store, 'key', [])
+    assert store['key'] == ['a'], 'Failed to de-duplicate'
+
+
+def test_extend_set_de_duplicates_new():
+    store = {'key': ['a', 'a', 'a']}
+    extend_set(store, 'key', ['a', 'a', 'a'])
+    assert store['key'] == ['a'], 'Failed to de-duplicate'
+
+
+def test_transform_adds_value():
+    store = {}
+    transform_set(store, 'key', int)
+    assert 'key' in store, 'Failed to add value'
+
+
+def test_transform_creates_new_list():
+    target = ['1', '2', '3']
+    store = {'key': target}
+    transform_set(store, 'key', int)
+    assert store['key'] is not target
+
+
+def test_transform_values():
+    store = {'key': ['1', '2', '3']}
+    transform_set(store, 'key', int)
+    assert store['key'] == [1, 2, 3]

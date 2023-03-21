@@ -44,7 +44,7 @@ rules:
     record: txt
     config:
       code: |
-        from dnsmule.config import get_logger
+        from dnsmule.logger import get_logger
         
         seen = set()
         

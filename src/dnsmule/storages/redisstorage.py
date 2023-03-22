@@ -9,11 +9,17 @@ class RedisStorage(KeyValueStorage):
     count: int = 100
     host: str
     port: int
+    use_json: bool = False
 
     def __init__(self, **kwargs):
         super(RedisStorage, self).__init__(**kwargs)
         import redis
-        self._client = redis.Redis(**kwargs, decode_responses=True)
+        self._options = {'use_json'}
+        self._client = redis.Redis(**{
+            k: getattr(self, k)
+            for k in self._properties
+            if k not in self._options
+        }, decode_responses=True)
 
     def __del__(self):
         if hasattr(self, '_client'):
@@ -25,12 +31,18 @@ class RedisStorage(KeyValueStorage):
         return self._client
 
     def _set(self, key: str, value: JsonData) -> None:
-        self._client.set(key, json.dumps(value))
+        if self.use_json:
+            self._client.json().set(key, '$', value)
+        else:
+            self._client.set(key, json.dumps(value))
 
     def _get(self, key: str) -> Optional[JsonData]:
-        result = self._client.get(key)
-        if result:
-            return json.loads(result)
+        if self.use_json:
+            return self._client.json().get(key)
+        else:
+            result = self._client.get(key)
+            if result:
+                return json.loads(result)
 
     def _del(self, key: str) -> None:
         self._client.delete(key)

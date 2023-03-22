@@ -1,8 +1,8 @@
 from pathlib import Path
-from typing import Union, Collection, Optional, Dict, Any, Container, Iterable
+from typing import Union, Collection, Optional, Iterable
 
 from .backends import Backend
-from .definitions import Domain, Result, RRType, Tag
+from .definitions import Domain, Result, RRType
 from .loader import ConfigLoader
 from .plugins import Plugins
 from .rules import Rules
@@ -102,8 +102,8 @@ class DNSMule:
             self,
             domains: Collection[Union[str, Domain]] = None,
             types: Collection[Union[str, int, RRType]] = None,
-            tags: Collection[Union[str, Tag]] = None,
-            data: Dict[str, Union[Any, Container[Any]]] = None,
+            tags: str = None,
+            data: str = None,
     ):
         """Search for a result given the parameters
         """

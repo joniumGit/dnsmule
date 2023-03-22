@@ -144,3 +144,16 @@ def test_transform_values():
     store = {'key': ['1', '2', '3']}
     transform_set(store, 'key', int)
     assert store['key'] == [1, 2, 3]
+
+
+def test_cross_contains_incompatible_types_left():
+    assert not cross_contains(['a'], 'b')
+    assert not cross_contains(['a'], None)
+
+
+def test_cross_contains():
+    assert cross_contains(['b'], 'b')
+    assert cross_contains(['b'], ['b'])
+    assert cross_contains('b', ['b'])
+    assert cross_contains('b', 'abc')
+    assert cross_contains('abc', 'b')

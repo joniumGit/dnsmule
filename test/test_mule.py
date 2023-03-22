@@ -147,11 +147,11 @@ def test_search_works(generate_result):
     mule.storage.store(res)
 
     assert next(iter(mule.search(domains=[res.domain, 'b.com', 'c.com']))) is not None, 'Failed to find result'
-    assert next(iter(mule.search(tags=['test']))) is not None, 'Failed to find result'
-    assert next(iter(mule.search(data={'test_value': Any}))) is not None, 'Failed to find result'
+    assert next(iter(mule.search(tags='^test'))) is not None, 'Failed to find result'
+    assert next(iter(mule.search(data='test_value'))) is not None, 'Failed to find result'
 
     with pytest.raises(StopIteration):
-        next(iter(mule.search(domains=[res.domain[1:]], tags=['test'])))
+        next(iter(mule.search(domains=[res.domain[1:]], tags='test')))
 
 
 def test_search_works_2(generate_result):

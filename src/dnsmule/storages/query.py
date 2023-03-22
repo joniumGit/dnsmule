@@ -1,5 +1,6 @@
+import re
 from dataclasses import dataclass, InitVar
-from typing import Dict, Union, Any, Iterable, Collection, Container
+from typing import Union, Any, Iterable, Collection
 
 from ..definitions import Result, Domain, RRType
 
@@ -7,39 +8,37 @@ from ..definitions import Result, Domain, RRType
 @dataclass
 class Query:
     ANY = Any
-    data: Dict[str, Union[Any, Container[Any]]] = ANY
     domains: Collection[Union[str, Domain]] = ANY
     types: InitVar[Iterable[Union[str, int, RRType]]] = ANY
-    tags: Collection[str] = ANY
+    tags: InitVar[str] = ANY
+    data: InitVar[str] = ANY
 
-    def __post_init__(self, types: Iterable[Union[str, int, RRType]]):
+    def __post_init__(self, types: Iterable[Union[str, int, RRType]], tags: str, data: str):
+        self._tags = re.compile(tags, flags=re.UNICODE) if tags is not Query.ANY else Query.ANY
+        self._data = re.compile(data, flags=re.UNICODE) if data is not Query.ANY else Query.ANY
         self._types = {RRType.from_any(o) for o in types} if types is not Query.ANY else Query.ANY
 
     def _check_data(self, r: Result) -> bool:
-        if self.data is not Query.ANY:
-            for k in filter(r.data.__contains__, self.data):
-                search_value = self.data[k]
-                if search_value is Query.ANY:
-                    return True
-                else:
-                    v = r.data[k]
-                    return (
-                            v == search_value
-                            or hasattr(v, '__contains__') and search_value in v
-                            or hasattr(search_value, '__contains__') and v in search_value
-                    )
-            return False
-        else:
-            return True
+        return self._data is Query.ANY or self._data.search(str(r.data))
 
     def _check_tags(self, r: Result) -> bool:
-        return self.tags is Query.ANY or any(map(self.tags.__contains__, r.tags))
+        return self._tags is Query.ANY or any(
+            self._tags.search(t)
+            for t in r.tags
+        )
 
     def _check_types(self, r: Result) -> bool:
-        return self._types is Query.ANY or any(map(self._types.__contains__, r.type))
+        return self._types is Query.ANY or any(
+            t in self._types
+            for t in r.type
+        )
 
     def _check_domains(self, r: Result) -> bool:
-        return self.domains is Query.ANY or r.domain in self.domains
+        return self.domains is Query.ANY or r.domain in self.domains or any(
+            r.domain.endswith(domain[1:])
+            for domain in self.domains
+            if domain.startswith('*')
+        )
 
     def __call__(self, r: Result) -> bool:
         return self._check_domains(r) and self._check_types(r) and self._check_tags(r) and self._check_data(r)

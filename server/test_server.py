@@ -240,3 +240,29 @@ def test_server_create_new_rule_rule_failure(client, mule):
     })
     assert r.status_code == 400, 'Failed to indicate rule error'
     assert len(r.json()['detail']), 'Failed to give all details'
+
+
+@pytest.mark.parametrize('search', [
+    'domains=*.example.com,example.com',
+    'domains=*.example.com&types=CNAME,TXT',
+    'data=^[^s]*set.:.*$',
+    'tags=^IP::PTR::.*?::AWS$',
+])
+def test_server_search_result(client, mule, search):
+    result = Result(
+        initial_type=RRType.A,
+        domain=Domain('a.example.com')
+    )
+    result.type.add(RRType.TXT)
+    result.tag('IP::PTR::RULE::AWS')
+    result.data['key'] = {'value': 1}
+    result.data['set'] = ['value_1', 'value_2']
+    mule.storage[result.domain] = result
+
+    r = client.get(f'/search?{search}')
+    assert r.status_code == 200, 'Failed to find results'
+    assert r.json() == {
+        'results': [
+            result_to_json_data(result),
+        ]
+    }, 'Result output was different'

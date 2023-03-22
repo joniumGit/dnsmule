@@ -107,9 +107,21 @@ def transform_set(data: Dict[str, Any], key: str, f: Callable[[Any], Any]):
         data[key] = []
 
 
+def contains(a: Any, b: Any) -> bool:
+    try:
+        return hasattr(a, '__contains__') and b in a
+    except TypeError:
+        return False
+
+
+def cross_contains(a: Any, b: Any) -> bool:
+    return a == b or contains(a, b) or contains(b, a)
+
+
 __all__ = [
     'load_data',
     'lmerge',
     'extend_set',
     'transform_set',
+    'cross_contains',
 ]

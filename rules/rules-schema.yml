@@ -223,6 +223,9 @@ definitions:
           language: Python
           prefix: |+0
             from dnsmule.definitions import RRType, Record, Result
+            from types import SimpleNamespace
+            
+            Config: SimpleNamespace
             
             def add_rule(
                     record_type: Union[str, int, RRType],

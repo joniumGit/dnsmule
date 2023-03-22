@@ -79,6 +79,7 @@ class DNSPythonBackend(Backend):
             self._querier = DNSPythonBackend._SUPPORTED_QUERY_TYPES[self.querier]
         except KeyError:
             raise ValueError(f'Invalid query mode ({self.querier})')
+        get_logger().info('DNSPYTHON: Resolver: %s', self.resolver)
 
     def _dns_query(
             self,

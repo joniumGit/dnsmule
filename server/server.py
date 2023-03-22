@@ -53,9 +53,9 @@ def get_storage():  # pragma: nocover this will be removed
         from dnsmule.storages.redisstorage import RedisStorage
         driver = RedisStorage(host='127.0.0.1')
         driver.client.ping()
-        get_logger().info('Using redis storage')
+        get_logger().info('SERVER: Using redis storage')
     except Exception as e:
-        get_logger().error('Failed to use redis storage', exc_info=e)
+        get_logger().error('SERVER: Failed to use redis storage', exc_info=e)
         from dnsmule.storages.dictstorage import DictStorage
         driver = DictStorage()
     return driver

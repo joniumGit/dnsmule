@@ -38,55 +38,6 @@ rules:
         - '^(.+)_verify_'
         - '^(\w+)-code:'
       group: 1
-  - name: log_txt
-    description: Logs possibly interesting TXT records
-    type: dns.dynamic
-    record: txt
-    config:
-      code: |
-        from dnsmule.logger import get_logger
-        
-        seen = set()
-        
-        
-        def init():
-            get_logger().info('Initializing TXT detector example')
-        
-        
-        def process(record: Record) -> None:
-            data: str = record.data.to_text()
-            if 'verif' in data:
-                if '=' in data:
-                    key = data.partition('=')[0]
-                    if key in seen:
-                        return
-                    seen.add(key)
-                get_logger().info(f'Found a verify record: %s', data)
-  - name: cname_providers
-    type: dns.dynamic
-    record: cname
-    config:
-      code: |
-        cnames = {
-            'edgekey.net': 'Akamai CDN',
-            'cloudflare.net': 'Cloudflare CDN',
-            'cloudfront.net': 'Amazon Cloudfront',
-            'github.io': 'GitHub Pages',
-            'azureedge.net': 'Azure CDN',
-            'awsglobalaccelerator.com': 'Amazon Accelerator',
-            'amazonaws.com': 'Amazon Web Services',
-            'simpli.fi': 'Simpli ADS',
-            'doubleclick.net': 'Doubleclick',
-        }
-        
-        
-        def process(record: Record) -> Result:
-            result = record.result()
-            for key in cnames:
-                _key = f'DNS::CIDER::{key.split(".")[0].upper()}'
-                if key in record.data.to_text():
-                    result.tags.add(_key)
-            return result
   - name: ptrscan
     type: ip.ptr
     record: A
@@ -108,3 +59,58 @@ rules:
         - amazon
         - microsoft
         - google
+  - name: textlog
+    description: Logs possibly interesting TXT records
+    type: dns.dynamic
+    record: txt
+    config:
+      code: |
+        from dnsmule.logger import get_logger
+        
+        logger = get_logger()
+        seen = set()
+        
+        
+        def process(record: Record) -> None:
+            start, sep, end = record.text.partition('=')
+            if sep and start not in seen:
+                seen.add(start)
+                logger.info('TEXTLOG: (%s %s) %s', str(record.type), record.domain, start)
+  - name: cider
+    type: dns.dynamic
+    record: cname
+    config:
+      identities:
+        - name: Akamai
+          type: CDN
+          value: edgekey.net
+        - name: Cloudflare
+          type: CDN
+          value: cloudflare.net
+        - name: Cloudfront
+          type: CDN
+          value: cloudfront.net
+        - name: Azure
+          type: CDN
+          value: azureedge.net
+        - name: Accelerator
+          type: HA
+          value: awsglobalaccelerator.com
+        - name: AWS
+          type: SAAS
+          value: amazonaws.com
+        - name: Simpli
+          type: ADS
+          value: simple.fi
+        - name: Doubleclick
+          type: ADS
+          value: doubleclick.net
+      code: |
+        def process(record: Record) -> Result:
+            for o in Config.identities:
+                key = o['value']
+                if key in record.text:
+                    record.tag('DNS::CIDER::%s::%s' % (
+                        o['type'].upper(),
+                        o['name'].upper(),
+                    ))

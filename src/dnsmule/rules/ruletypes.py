@@ -1,6 +1,7 @@
 import functools
 import operator
 import re
+from types import SimpleNamespace
 from typing import List, Union, Callable, Dict, Any
 
 from .entities import Rule
@@ -70,6 +71,7 @@ class DynamicRule(Rule):
             'Result': Result,
             'Domain': Domain,
             'Tag': Tag,
+            'Config': SimpleNamespace(**{k: getattr(self, k) for k in self._properties})
         }
         if not self.code:
             raise ValueError('No code provided')

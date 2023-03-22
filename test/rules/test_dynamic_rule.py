@@ -93,3 +93,15 @@ def test_globals_persist(generate_record):
     r.init(dummy)
     r(generate_record())
     assert r.globals['a'] == 20, 'Globals did not persist'
+
+
+def test_config_available():
+    r = DynamicRule(
+        my_config_values={
+            'a': 123,
+            'b': 10,
+        },
+        code='pass',
+    )
+    assert 'Config' in r.globals, 'Failed to have Config global'
+    assert r.globals['Config'].my_config_values is not None, 'Failed to contain Config namespace'

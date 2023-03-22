@@ -51,7 +51,7 @@ def get_mule() -> DNSMule:
 def get_storage():  # pragma: nocover this will be removed
     try:
         from dnsmule.storages.redisstorage import RedisStorage
-        driver = RedisStorage(host='127.0.0.1')
+        driver = RedisStorage(host='127.0.0.1', use_json=True)
         driver.client.ping()
         get_logger().info('SERVER: Using redis storage')
     except Exception as e:

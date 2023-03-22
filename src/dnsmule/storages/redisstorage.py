@@ -20,6 +20,7 @@ class RedisStorage(KeyValueStorage):
             for k in self._properties
             if k not in self._options
         }, decode_responses=True)
+        self._client.ping()
 
     def __del__(self):
         if hasattr(self, '_client'):

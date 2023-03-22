@@ -9,6 +9,7 @@ from .plugins import Plugin
 from .rules import Rules, DynamicRule
 from .rules.entities import RuleFactory
 from .storages import Storage
+from .storages.dictstorage import DictStorage
 
 if TYPE_CHECKING:  # pragma: nocover
     from .mule import DNSMule
@@ -85,8 +86,15 @@ class ConfigLoader:
         storage_definition: Dict[str, Any] = self.config.get('storage', {})
         if storage_definition:
             storage_type = storage_definition['name']
-            storage_class = import_full(storage_type, Storage, 'dnsmule.storages')
-            self.mule.storage = storage_class(**storage_definition.get('config', {}))
+            try:
+                storage_class = import_full(storage_type, Storage, 'dnsmule.storages')
+                self.mule.storage = storage_class(**storage_definition.get('config', {}))
+            except Exception as e:
+                if storage_definition.get('fallback', False):
+                    self.mule.storage = DictStorage()
+                    get_logger().error(f'Failed to initialize storage {storage_type}', exc_info=e)
+                else:
+                    raise e
 
     def set_backend(self):
         backend_definition: Dict[str, Any] = self.config.get('backend', {})

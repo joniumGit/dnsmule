@@ -26,8 +26,18 @@ class StoragesTestRedisBase(StoragesTestBase, ABC):
                 '--name dnsmule-test-redis '
                 'redis/redis-stack:latest'
             ) == 0
-            time.sleep(1)
-            yield {'host': '127.0.0.1', 'port': 5431}
+            params = {'host': '127.0.0.1', 'port': 5431}
+            import redis
+            c = redis.Redis(**params)
+            while True:
+                try:
+                    if c.ping():
+                        break
+                except redis.exceptions.RedisError:
+                    time.sleep(1)
+            c.close()
+            del c
+            yield params
             assert os.system('docker kill dnsmule-test-redis') == 0
         else:
             raise ValueError('Invalid State')
@@ -41,19 +51,19 @@ class StoragesTestRedisBase(StoragesTestBase, ABC):
         else:
             yield
 
-    def test_del_closes_client(self, storage, mock_closable):
-        s = type(storage)()
+    def test_del_closes_client(self, storage, mock_closable, container):
+        s = type(storage)(**container)
         s._client = mock_closable
         del s
         assert mock_closable.closed, 'Failed to close'
 
-    def test_del_does_not_raise_without_client(self, storage):
-        r = type(storage)()
+    def test_del_does_not_raise_without_client(self, storage, container):
+        r = type(storage)(**container)
         del r._client
         del r
 
-    def test_client_property(self, storage):
-        r = type(storage)()
+    def test_client_property(self, storage, container):
+        r = type(storage)(**container)
         assert r.client is r._client, 'Failed to match'
 
     def test_size_is_approximate(self, storage, generate_result):

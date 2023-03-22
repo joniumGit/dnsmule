@@ -1,6 +1,13 @@
 version: '0.0.1'
+storage:
+  name: redisstorage.RedisStorage
+  fallback: true
+  config:
+    use_json: true
+    host: 127.0.0.1
+    port: 6379
 backend:
-  name: 'dnspython.DNSPythonBackend'
+  name: dnspython.DNSPythonBackend
   config:
     timeout: 2
 plugins:

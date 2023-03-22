@@ -48,27 +48,13 @@ def get_mule() -> DNSMule:
     return app.state.mule
 
 
-def get_storage():  # pragma: nocover this will be removed
-    try:
-        from dnsmule.storages.redisstorage import RedisStorage
-        driver = RedisStorage(host='127.0.0.1', use_json=True)
-        driver.client.ping()
-        get_logger().info('SERVER: Using redis storage')
-    except Exception as e:
-        get_logger().error('SERVER: Failed to use redis storage', exc_info=e)
-        from dnsmule.storages.dictstorage import DictStorage
-        driver = DictStorage()
-    return driver
-
-
 @app.on_event('startup')
 def startup():
     get_logger().addHandler(StreamHandler())
     get_logger().setLevel(INFO)
-    mule = DNSMule.load(file=rules)
-    mule.storage = get_storage()
-
-    app.state.mule = mule
+    app.state.mule = DNSMule.load(file=rules)
+    get_logger().info('SERVER: Using storage %s', type(app.state.mule.storage).__name__)
+    get_logger().info('SERVER: Using backend %s', type(app.state.mule.backend).__name__)
 
 
 def domain_query(default=...):

@@ -324,3 +324,31 @@ def test_plugins_loading_twice_does_not_affect_loaded(loader_test_init):
     }
     loader.append_plugins()
     assert mule.plugins.get(NOOPPlugin) is plugin, 'Plugin got overridden'
+
+
+def test_storage_fallback(loader_test_init, logger):
+    from dnsmule import loader as m
+    logger.mock_in_module(m)
+
+    mule, loader = loader_test_init
+    loader.config = {
+        'storage': {
+            'name': 'dnsmule.backends.noop.dwadawdwadwawa',
+            'fallback': True,
+        }
+    }
+    loader.set_storage()
+    assert type(mule.storage) == DictStorage, 'Failed to default'
+    assert 'error' in logger.result
+
+
+def test_storage_without_fallback(loader_test_init, logger):
+    mule, loader = loader_test_init
+    loader.config = {
+        'storage': {
+            'name': 'dnsmule.backends.noop.dwadawdwadwawa',
+        }
+    }
+
+    with pytest.raises(ImportError):
+        loader.set_storage()

@@ -14,6 +14,20 @@ properties:
   version:
     type: string
     pattern: ^\d+(?:\.\d+){0,2}$
+  storage:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        pattern: '^(?:\w+\.)*\w+$'
+      fallback:
+        type: boolean
+        default: false
+      config:
+        type: object
+        additionalProperties: true
   backend:
     type: object
     required:

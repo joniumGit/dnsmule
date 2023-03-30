@@ -1,11 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Union
-from typing import Optional, Iterable, List
+from typing import Optional, Iterable, List, Union, Mapping
 
 from .abstract import Storage, Query
 from ..definitions import Result, Domain, RRType
 
-JsonData = Dict[str, Union[List, str, int, float, 'Json']]
+JsonData = Mapping[str, Union[List, str, int, float, 'Json']]
 
 
 def result_to_json_data(result: Result) -> JsonData:
@@ -88,4 +87,6 @@ __all__ = [
     'KeyValueStorage',
     'JsonData',
     'Query',
+    'result_to_json_data',
+    'result_from_json_data',
 ]

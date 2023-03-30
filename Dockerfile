@@ -1,10 +1,14 @@
-FROM python:3.11
-RUN useradd -ms /bin/bash dnsmule
+FROM python:3.11-slim
 WORKDIR /opt/dnsmule
+RUN useradd -M dnsmule
 COPY . ./
-RUN chown -R root:dnsmule /opt/dnsmule && find /opt/dnsmule -type d -exec chmod 770 {} +
+RUN chown -R root:dnsmule . && chmod -R 770 .
 USER dnsmule
-ENV PATH=$PATH:/home/dnsmule/.local/bin
-RUN pip install --upgrade pip && python -m pip install . ./plugins[all] && python -m pip install -r server/requirements.txt
+RUN python -m venv venv \
+    && venv/bin/python -m pip install --no-cache-dir --upgrade pip \
+    && venv/bin/python -m pip install --no-cache-dir .[redis] ./plugins[all] \
+    && venv/bin/python -m pip install --no-cache-dir -r server/requirements.txt
+RUN cp rules/rules.yml rules/rules-old.yml  \
+    && sed -e 's/host: 127.0.0.1/host: redis/g' rules/rules-old.yml > rules/rules.yml
 EXPOSE 8080
-ENTRYPOINT ["python", "-m", "uvicorn", "--host", "0.0.0.0", "--port", "8080", "server.server:app"]
+ENTRYPOINT ["venv/bin/python", "-m", "uvicorn", "--host", "0.0.0.0", "--port", "8080", "server.server:app"]

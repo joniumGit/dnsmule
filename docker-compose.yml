@@ -1,0 +1,23 @@
+version: '3'
+services:
+  redis:
+    image: redis/redis-stack:latest
+    environment:
+      REDIS_ARGS: '--save 60 1 --loglevel notice'
+    volumes:
+      - 'redis-data:/data'
+    ports:
+      - '127.0.0.1:6379:6379'
+      - '127.0.0.1:8001:8001'
+  dnsmule:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dnsmule:latest
+    tty: true
+    ports:
+      - '127.0.0.1:8080:8080'
+    depends_on:
+      - redis
+volumes:
+  redis-data:

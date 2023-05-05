@@ -1,46 +1,16 @@
-import os
-import time
 from abc import ABC
 
 import pytest
 
-from _storages import StoragesTestBase
+from _storages import ContainerStorageTestBase
 
 
-@pytest.cached
-def skip_redis():
-    return max([
-        os.system('docker info'),
-        os.system('python -c "import redis"'),
-    ])
-
-
-class StoragesTestRedisBase(StoragesTestBase, ABC):
+# noinspection PyMethodMayBeStatic
+class StoragesTestRedisBase(ContainerStorageTestBase, ABC):
 
     @pytest.fixture(scope='class')
-    def container(self):
-        if not skip_redis():
-            os.system('docker kill dnsmule-test-redis')
-            assert os.system(
-                'docker run --rm -d -p 127.0.0.1:5431:6379 '
-                '--name dnsmule-test-redis '
-                'redis/redis-stack:latest'
-            ) == 0
-            params = {'host': '127.0.0.1', 'port': 5431}
-            import redis
-            c = redis.Redis(**params)
-            while True:
-                try:
-                    if c.ping():
-                        break
-                except redis.exceptions.RedisError:
-                    time.sleep(1)
-            c.close()
-            del c
-            yield params
-            assert os.system('docker kill dnsmule-test-redis') == 0
-        else:
-            raise ValueError('Invalid State')
+    def storage_params(self, redis_container):
+        yield {**redis_container}
 
     @pytest.fixture(scope='function', autouse=True)
     def flush(self, storage):
@@ -51,21 +21,6 @@ class StoragesTestRedisBase(StoragesTestBase, ABC):
         else:
             yield
 
-    def test_del_closes_client(self, storage, mock_closable, container):
-        s = type(storage)(**container)
-        s._client = mock_closable
-        del s
-        assert mock_closable.closed, 'Failed to close'
-
-    def test_del_does_not_raise_without_client(self, storage, container):
-        r = type(storage)(**container)
-        del r._client
-        del r
-
-    def test_client_property(self, storage, container):
-        r = type(storage)(**container)
-        assert r.client is r._client, 'Failed to match'
-
     def test_size_is_approximate(self, storage, generate_result):
         assert storage.size() == 0, 'Was not empty'
         storage.store(generate_result())
@@ -74,19 +29,17 @@ class StoragesTestRedisBase(StoragesTestBase, ABC):
         assert storage.size() != 1, 'Other keys did not show up in len'
 
 
-@pytest.mark.skipif(skip_redis(), reason='Docker or Redis not available')
 class TestStoragesRedis(StoragesTestRedisBase):
 
     @pytest.fixture(scope='class')
-    def storage(self, container):
-        from dnsmule.storages.redisstorage import RedisStorage
-        yield RedisStorage(**container)
+    def storage(self, storage_params):
+        from dnsmule.storages.redis import RedisStorage
+        yield RedisStorage(**storage_params)
 
 
-@pytest.mark.skipif(skip_redis(), reason='Docker or Redis not available')
 class TestStoragesRedisJson(StoragesTestRedisBase):
 
     @pytest.fixture(scope='class')
-    def storage(self, container):
-        from dnsmule.storages.redisstorage import RedisStorage
-        yield RedisStorage(**container, use_json=True)
+    def storage(self, storage_params):
+        from dnsmule.storages.redis import RedisJSONStorage
+        yield RedisJSONStorage(**storage_params)

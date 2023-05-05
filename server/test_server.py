@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from dnsmule import DNSMule, Plugin
 from dnsmule.definitions import Result, Domain, RRType
-from dnsmule.storages.kvstorage import result_to_json_data
+from dnsmule.storages.abstract import result_to_json_data
 from server import app
 
 test_rules = Path(__file__).parent / 'rules.yml'

@@ -1,11 +1,13 @@
-from typing import Any
-
 from dnsmule import RRType
-from dnsmule.storages import Query
+from dnsmule.storages.abstract import DefaultQuerier, Query as QueryImpl
 
 
-def test_any():
-    assert Query.ANY is Any, 'Failed to match ANY to a commonly available type'
+class Query(QueryImpl):
+    """Patches old test code
+    """
+
+    def __call__(self, r):
+        return DefaultQuerier.create(self)(r)
 
 
 def test_is_intersect(generate_result):
@@ -64,6 +66,7 @@ def test_types_match(generate_result):
 
 def test_types_no_match(generate_result):
     result = generate_result()
+    result.type.clear()
     result.type.add(RRType.TXT)
 
     assert not Query(types=['CNAME', 'MX', 'A'])(result), 'Produced match without valid value'

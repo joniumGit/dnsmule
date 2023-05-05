@@ -12,7 +12,7 @@ from pydantic import BaseModel, validator, ValidationError, Extra, constr
 
 from dnsmule import DNSMule, RRType, __version__, Domain
 from dnsmule.logger import get_logger
-from dnsmule.storages.kvstorage import result_to_json_data
+from dnsmule.storages.abstract import result_to_json_data
 
 app = FastAPI(
     default_response_class=Response,

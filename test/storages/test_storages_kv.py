@@ -3,11 +3,11 @@ from typing import Iterable, Optional, List
 import pytest
 
 from dnsmule import Domain
-from dnsmule.storages.abstract import Query
-from dnsmule.storages.kvstorage import JsonData, KeyValueStorage, result_from_json_data, result_to_json_data
+from dnsmule.storages.abstract import JsonData, PrefixedKeyValueStorage, Query
+from dnsmule.storages.abstract import result_from_json_data, result_to_json_data
 
 
-class MockKVStorage(KeyValueStorage):
+class MockKVStorage(PrefixedKeyValueStorage):
     calls: List[str]
 
     def __init__(self):
@@ -31,7 +31,8 @@ class MockKVStorage(KeyValueStorage):
 
     def _iterate(self) -> Iterable[str]:
         self.calls.append('_iterate')
-        yield from map(list.pop, self.values)
+        while self.values:
+            yield self.values.pop()
 
     def size(self) -> int:
         self.calls.append('size')
@@ -58,9 +59,18 @@ def test_delete_calls_del(mock_storage, generate_result):
     assert mock_storage.calls == ['_del']
 
 
-def test_domains_calls_iterate(mock_storage, generate_result):
-    _ = [*mock_storage.domains()]
+def test_domains_calls_iterate_no_match(mock_storage, generate_result):
+    mock_storage.values.append('domain')
+    result = [*mock_storage.domains()]
     assert mock_storage.calls == ['_iterate']
+    assert result == []
+
+
+def test_domains_calls_iterate_returns_domain(mock_storage, generate_result):
+    mock_storage.values.append(mock_storage.domain_to_key(Domain('domain')))
+    result = [*mock_storage.domains()]
+    assert mock_storage.calls == ['_iterate']
+    assert result == ['domain']
 
 
 def test_results_calls_iterate(mock_storage, generate_result):
@@ -84,9 +94,8 @@ def test_size_calls_size(mock_storage, generate_result):
     [],
 ])
 def test_pure_key_functions(mock_storage, value):
-    key = mock_storage.to_key(Domain(value))
-    assert mock_storage.is_key(key), 'to_key was not a key'
-    assert mock_storage.from_key(key) == Domain(str(value)), 'Did not produce original result'
+    key = mock_storage.domain_to_key(Domain(value))
+    assert mock_storage.domain_from_key(key) == Domain(str(value)), 'Did not produce original result'
 
 
 def test_json_function_inverse(generate_result):
@@ -97,15 +106,13 @@ def test_json_function_inverse(generate_result):
 def test_store_expected_result(mock_storage, generate_result):
     r = generate_result()
     mock_storage.store(r)
-
-    expected_key = (mock_storage.to_key(r.domain), result_to_json_data(r))
+    expected_key = (mock_storage.domain_to_key(r.domain), result_to_json_data(r))
     assert mock_storage.values.pop() == expected_key, 'Did not set value as expected'
 
 
 def test_fetch_expected_result(mock_storage, generate_result):
     r = generate_result()
-    mock_storage.values.append((mock_storage.to_key(r.domain), result_to_json_data(r)))
-
+    mock_storage.values.append((mock_storage.domain_to_key(r.domain), result_to_json_data(r)))
     result = mock_storage.fetch(r.domain)
     assert result == r, 'Did not get expected result'
 

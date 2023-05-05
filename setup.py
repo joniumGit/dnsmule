@@ -49,10 +49,14 @@ setup(
             'pytest',
             'pytest-cov',
             'redis',
+            'pymongo',
         ],
         'redis': [
             'redis',
         ],
+        'mongo': [
+            'pymongo',
+        ]
     },
     project_urls={
         'Bug Reports': f'{repo}/issues',

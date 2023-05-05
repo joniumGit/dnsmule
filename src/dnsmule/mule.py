@@ -108,10 +108,10 @@ class DNSMule:
         """Search for a result given the parameters
         """
         return self.storage.query(Query(
-            domains=domains or Query.ANY,
-            types=types or Query.ANY,
-            tags=tags or Query.ANY,
-            data=data or Query.ANY,
+            domains=domains,
+            types=types,
+            tags=tags,
+            data=data,
         ))
 
 

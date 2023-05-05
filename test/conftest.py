@@ -70,18 +70,3 @@ def generate_result(generate_record) -> Callable[[], Result]:
 @pytest.fixture
 def mock_closable():
     yield MockClosable()
-
-
-def cached(f):
-    from functools import wraps
-
-    value = f()
-
-    @wraps(f)
-    def wrapper(*_, **__):
-        return value
-
-    return wrapper
-
-
-pytest.cached = cached

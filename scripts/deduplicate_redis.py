@@ -1,4 +1,4 @@
-from dnsmule.storages.redisstorage import RedisStorage
+from dnsmule.storages.redis import RedisStorage
 from dnsmule_plugins.certcheck.certificates import Certificate
 
 if __name__ == '__main__':

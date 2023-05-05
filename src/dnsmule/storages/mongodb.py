@@ -1,6 +1,6 @@
 from typing import Iterable, Optional
 
-from pymongo import MongoClient
+from pymongo import MongoClient, DESCENDING
 
 from .abstract import Storage, result_from_json_data, result_to_json_data, Query, DefaultQuerier
 from .. import Result, Domain, RRType
@@ -17,6 +17,12 @@ class MongoDB(Storage):
             for k in self._properties
             if k != 'database' and k != 'collection'
         })
+        self._collection.create_index(
+            [('domain', DESCENDING)],
+            name='idx_domain_u',
+            background=True,
+            unique=True,
+        )
 
     def __del__(self):
         if hasattr(self, '_client'):

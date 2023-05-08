@@ -32,6 +32,13 @@ class KwargClass:
         )
         return f'{type(self).__name__}({args})'
 
+    @property
+    def _kwargs(self):
+        return {
+            k: getattr(self, k)
+            for k in self._properties
+        }
+
 
 class classproperty(classmethod):
 

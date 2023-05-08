@@ -71,7 +71,7 @@ class DynamicRule(Rule):
             'Result': Result,
             'Domain': Domain,
             'Tag': Tag,
-            'Config': SimpleNamespace(**{k: getattr(self, k) for k in self._properties})
+            'Config': SimpleNamespace(**self._kwargs)
         }
         if not self.code:
             raise ValueError('No code provided')

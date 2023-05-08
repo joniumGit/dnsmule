@@ -1,7 +1,5 @@
 from typing import Iterable, Optional
 
-from pymongo import MongoClient, DESCENDING
-
 from .abstract import Storage, result_from_json_data, result_to_json_data, Query, DefaultQuerier
 from .. import Result, Domain, RRType
 
@@ -12,13 +10,13 @@ class MongoDB(Storage):
 
     def __init__(self, **kwargs):
         super(MongoDB, self).__init__(**kwargs)
-        self._client = MongoClient(**{
-            k: getattr(self, k)
-            for k in self._properties
-            if k != 'database' and k != 'collection'
-        })
+        import pymongo
+        driver_kwargs = self._kwargs
+        driver_kwargs.pop('database', None)
+        driver_kwargs.pop('collection', None)
+        self._client = pymongo.MongoClient(**driver_kwargs)
         self._collection.create_index(
-            [('domain', DESCENDING)],
+            [('domain', pymongo.DESCENDING)],
             name='idx_domain_u',
             background=True,
             unique=True,

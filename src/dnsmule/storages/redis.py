@@ -13,12 +13,9 @@ class RedisStorage(PrefixedKeyValueStorage):
     def __init__(self, **kwargs):
         super(RedisStorage, self).__init__(**kwargs)
         import redis
-        self._options = {'use_json'}
-        self._client = redis.Redis(**{
-            k: getattr(self, k)
-            for k in self._properties
-            if k not in self._options
-        }, decode_responses=True)
+        driver_args = self._kwargs
+        driver_args['decode_responses'] = True
+        self._client = redis.Redis(**driver_args)
         self._client.ping()
 
     def __del__(self):

@@ -2,11 +2,13 @@ from pathlib import Path
 from typing import Union, Collection, Optional, Iterable
 
 from .backends import Backend
+from .backends.noop import NOOPBackend
 from .definitions import Domain, Result, RRType
 from .loader import ConfigLoader
 from .plugins import Plugins
 from .rules import Rules
 from .storages import Storage, Query
+from .storages.dictstorage import DictStorage
 
 
 class DNSMule:
@@ -23,10 +25,8 @@ class DNSMule:
             plugins: Plugins = None,
     ):
         if backend is None:
-            from .backends.noop import NOOPBackend
             backend = NOOPBackend()
         if storage is None:
-            from .storages.dictstorage import DictStorage
             storage = DictStorage()
         if rules is None:
             rules = Rules()

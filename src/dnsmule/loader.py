@@ -1,13 +1,12 @@
 from functools import partial
 from pathlib import Path
-from typing import Dict, List, Any, Type, TypeVar, Union, cast, TYPE_CHECKING
+from typing import Dict, List, Any, Type, TypeVar, Union, cast, TYPE_CHECKING, Callable
 
 from .backends import Backend
 from .definitions import RRType
 from .logger import get_logger
 from .plugins import Plugin
 from .rules import Rules, DynamicRule
-from .rules.entities import RuleFactory
 from .storages import Storage
 from .storages.dictstorage import DictStorage
 
@@ -71,7 +70,7 @@ def load_and_append_rule(
     """
     rule = rules.create(rule_type, config)
     if isinstance(rule, DynamicRule):
-        rule.init(cast(RuleFactory, partial(load_and_append_rule, rules)))
+        rule.init(cast(Callable[[RRType, str, Dict[str, Any]], None], partial(load_and_append_rule, rules)))
     rules.append(record, rule)
 
 

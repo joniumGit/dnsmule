@@ -61,3 +61,12 @@ def test_factories_register_a_rule():
     factory.register(A)
 
     assert 'test.rule' in factory._factories, 'Failed to add rule'
+
+
+def test_factories_register_a_rule_type_returns_type():
+    factory = RuleFactoryMixIn()
+
+    class A(Rule):
+        _id = 'test.rule'
+
+    assert factory.register(A) == A

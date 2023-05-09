@@ -1,4 +1,4 @@
-from typing import Dict, Callable, Any, Optional, Union, Type
+from typing import Callable, Optional, Union
 
 from ..definitions import RRType, Record, Result
 from ..utils import KwargClass, Comparable, Identifiable
@@ -44,9 +44,6 @@ class Rule(KwargClass, Comparable, Identifiable):
         return self.priority > other.priority
 
 
-RuleFactory = Union[Type[Rule], Callable[[RRType, str, Dict[str, Any]], Rule]]
-
-
 class RuleCreator:
     """Helper for rule registration
     """
@@ -82,5 +79,4 @@ __all__ = [
     'Rule',
     'RuleFunction',
     'RuleCreator',
-    'RuleFactory',
 ]

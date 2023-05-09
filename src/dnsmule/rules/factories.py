@@ -1,7 +1,9 @@
 from typing import Dict, Any, Union, Type, Callable
 
-from .entities import RuleFactory, Rule
+from .entities import Rule
 from .ruletypes import DynamicRule, RegexRule
+
+RuleFactory = Union[Type[Rule], Callable[[...], Rule]]
 
 
 class RuleFactoryMixIn:
@@ -17,7 +19,7 @@ class RuleFactoryMixIn:
         """
         return self._factories[type_name](**definition)
 
-    def register(self, rule_type: Union[str, Type[Rule]]) -> Union[Callable[[RuleFactory], RuleFactory], None]:
+    def register(self, rule_type: Union[str, Type[Rule]]) -> Union[Callable[[RuleFactory], RuleFactory], Type[Rule]]:
         """Registers a handler for a rule type
         """
 
@@ -25,6 +27,8 @@ class RuleFactoryMixIn:
             if not issubclass(rule_type, Rule):
                 raise TypeError('Not a Rule')
             self._factories[rule_type.id] = rule_type
+
+            return rule_type
         else:
             def decorator(f: RuleFactory) -> RuleFactory:
                 self._factories[rule_type] = f

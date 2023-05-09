@@ -1,4 +1,4 @@
-# Rules
+# YAML Configuration of DNSMule
 
 ## Summary
 
@@ -38,7 +38,7 @@ rules: Rules
 
 
 @rules.add.A[10]
-async def my_scan(record: Record) -> Result:
+def my_scan(record: Record) -> Result:
     from dnsmule.logger import get_logger
     get_logger().info('Address %s', record)
     return record.tag('MY::SCAN')
@@ -50,8 +50,10 @@ def create_my_rule(**arguments) -> Rule:
 ```
 
 Here the `add` is used to directly register a new rule into the ruleset with a given priority. The `register` call
-creates a new handler for rules of type `my.rule`. Any future `my.rule` creations from `yml` or code would be routed to
+creates a new handler for rules of type `my.rule`. Any future `my.rule` creations from YAML or code would be routed to
 this factory function.
+
+See the examples folder for more examples and how to use rules in code.
 
 ## Other Components in YAML
 
@@ -105,18 +107,15 @@ This is configured in the schema using the custom intellij language injection ta
 x-intellij-language-injection:
   language: Python
   prefix: |+0
-    from dnsmule.rules.entities import Type, Record, Result
-
-    def add_rule(record_type: Any, rule_type: str, name: str, priority: int = 0, **options) -> None:
-        pass
-
+    code hints go here
+    check the schema for more info
   suffix: ''
 ```
 
 Currently, this supports `dns.regex` pattern regex language injection and `dns.dynamic` rule code language injection.
 Type hints and quick documentation are available.
 
-## Builtin types
+## Builtin Rule Types
 
 #### Regex rules
 
@@ -148,7 +147,7 @@ rules:
       group: 1
 ```
 
-The full definition is available from the schema file.
+The full definition and additional info is available from the schema file, examples, and code.
 
 #### Dynamic Rules
 
@@ -173,9 +172,10 @@ Both of these functions have access to the following rule creation method:
 
 ```python
 def add_rule(
-        record_type: Any,
+        record_type: Union[str, int, RRType],
         rule_type: str,
         name: str,
+        *,
         priority: int = 0,
         **options,
 ) -> None:
@@ -186,13 +186,13 @@ def add_rule(
     :param priority:    Priority for the created rule, default 0
     :param options:     Any additional options for the rule factory
     """
-    pass
 ```
 
 The only globals passed to these methods are:
 
 - \_\_builtins\_\_
-- from dnsmule.definitions import RRType, Record, Result
+- RRType, Record, Result, Domain, Tag, Config
+    - The Config contains the `config` property passed to the rule from YAML
 - add_rule
 - Any additional globals created by the code itself
 

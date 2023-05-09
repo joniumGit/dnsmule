@@ -192,13 +192,13 @@ definitions:
         title: Dynamic actions by invoking python code
         description: |+2
           Dynamic rules are defined as code snippets with one or two methods
-        
-          1. An init method that is invoked once after creation
+                  
+          An init method that is invoked once after creation
         
             def init() -> None:
                 add_rule(Type.TXT, ...)
         
-          2. A process function that is invoked once for each record
+          A process function that is invoked once for each record
         
             def process(record: Record) -> Result:
                 add_rule(...)
@@ -207,25 +207,36 @@ definitions:
           Both of these functions have access to the following rule creation method:
         
             def add_rule(
-                record_type: Any,   # DNS record type this rule will handle
-                rule_type: str,     # Rule type i.e. rule factory name
-                name: str,          # Name for the rule
-                priority: int = 0,  # Priority for the rule
-                **options           # Options passed to the factory
+                    record_type: Union[str, int, RRType],
+                    rule_type: str,
+                    name: str,
+                    *,
+                    priority: int = 0,
+                    **options,
             ) -> None:
-              pass
+                """
+                :param record_type: Valid DNS record type as text, int, or type
+                :param rule_type:   Valid rule type factory e.g. dns.regex
+                :param name:        Name of the created rule
+                :param priority:    Priority for the created rule, default 0
+                :param options:     Any additional options for the rule factory
+                """
         
           The only globals passed to these methods are:
-          - __builtins__
-          - from dnsmule.definitions import RRType, Record, Result
+        
+          - \_\_builtins\_\_
+          - RRType, Record, Result, Domain, Tag, Config
+              - The Config contains the `config` property passed to the rule from YAML
           - add_rule
           - Any additional globals created by the code itself
         
           When the code is exec'd the result is inspected for:
+        
           - init function without parameters
           - process function with a single parameter
         
           Some notes:
+        
           - The init function is invoked exactly once.
           - The process function is invoked exactly once for every single Record.
           - Any rules created from the init method will be invoked for every suitable record.
@@ -236,10 +247,13 @@ definitions:
         x-intellij-language-injection:
           language: Python
           prefix: |+0
-            from dnsmule.definitions import RRType, Record, Result
             from types import SimpleNamespace
+            from typing import Union
+            
+            from dnsmule.definitions import RRType, Record, Result, Domain, Tag
             
             Config: SimpleNamespace
+            
             
             def add_rule(
                     record_type: Union[str, int, RRType],
@@ -256,6 +270,5 @@ definitions:
                 :param priority:    Priority for the created rule, default 0
                 :param options:     Any additional options for the rule factory
                 """
-                pass
 
           suffix: ''

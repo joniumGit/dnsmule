@@ -1,0 +1,15 @@
+version: '0.5.0'
+backend:
+  name: dnspython.DNSPythonBackend
+  config:
+    timeout: 2
+    description: This Storage has been configured in the YAML file
+rules:
+  - name: DIGITS
+    type: dns.regex
+    record: A
+    description: Matches first Digit of the IP address
+    config:
+      pattern: '^(\d)'
+      group: 1
+      description: This Rule has been configured in the YAML file

@@ -17,6 +17,10 @@ The DNSMule tool is composed in the following way:
         - Rule
     - Plugins
 
+## Examples
+
+Check out the examples in the [examples](examples) folder. They should get you up and running quickly.
+
 #### Backends
 
 Any backend can be used and registered in YAML, the only requirement is extending the `dnsmule.backends.Backend` class.

@@ -77,8 +77,8 @@ def test_call_add_certs(mock_collection):
     assert len((check(r)).data['resolvedCertificates']) == 2, 'Failed to remove duplicates'
 
     certs = result.data['resolvedCertificates']
-    assert cert1.to_json() in certs, 'Failed to append existing data'
-    assert cert2.to_json() in certs, 'Failed to append data'
+    assert cert1 in certs, 'Failed to append existing data'
+    assert cert2 in certs, 'Failed to append data'
 
     assert len((check(r)).data['resolvedCertificates']) == 2, 'Failed to remove duplicates'
 

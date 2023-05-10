@@ -2,7 +2,7 @@ import pathlib
 
 import pytest
 
-from dnsmule.utils import load_data, left_merge, extend_set, transform_set, join_values, empty
+from dnsmule.utils import load_data, left_merge, extend_set, join_values, empty
 
 
 def test_empty_raises():
@@ -116,23 +116,3 @@ def test_extend_set_de_duplicates_new():
     store = {'key': ['a', 'a', 'a']}
     extend_set(store, 'key', ['a', 'a', 'a'])
     assert store['key'] == ['a'], 'Failed to de-duplicate'
-
-
-def test_transform_adds_value():
-    store = {}
-    with transform_set(store, 'key', int, str):
-        assert 'key' in store, 'Failed to add value'
-
-
-def test_transform_creates_new_list():
-    target = ['1', '2', '3']
-    store = {'key': target}
-    with transform_set(store, 'key', int, str):
-        assert store['key'] is not target
-
-
-def test_transform_values():
-    store = {'key': ['1', '2', '3']}
-    with transform_set(store, 'key', int, str):
-        assert store['key'] == [1, 2, 3]
-    assert store['key'] == ['1', '2', '3']

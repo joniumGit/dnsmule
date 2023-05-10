@@ -1,7 +1,6 @@
 from typing import Callable, Collection, List, Optional
 
 from dnsmule import Rule, Result, Record
-from dnsmule.utils import extend_set, transform_set
 from . import certificates
 from .domains import process_domains
 
@@ -37,13 +36,7 @@ class CertChecker(Rule):
             )
         }
         if certs:
-            with transform_set(
-                    record.result.data,
-                    'resolvedCertificates',
-                    certificates.Certificate.from_json,
-                    certificates.Certificate.to_json
-            ):
-                extend_set(record.result.data, 'resolvedCertificates', certs)
+            record.result.data.setdefault('resolvedCertificates', set()).update(certs)
             if self.callback:
                 domains = [*process_domains(
                     domain

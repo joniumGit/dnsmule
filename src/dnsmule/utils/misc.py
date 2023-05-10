@@ -1,6 +1,5 @@
-from contextlib import contextmanager
 from pathlib import Path
-from typing import Union, Callable, Iterator, TypeVar, Any, Dict, Tuple, Iterable
+from typing import Union, Iterator, TypeVar, Any, Dict, Tuple, Iterable
 
 K = TypeVar('K')
 V = TypeVar('V')
@@ -127,25 +126,10 @@ def extend_set(data: Dict[str, Any], key: str, values: Iterable[Any]):
     data[key] = target
 
 
-@contextmanager
-def transform_set(data: Dict[str, Any], key: str, function: Callable[[T], R], inverse: Callable[[R], T]) -> None:
-    """
-    Transforms a list based set using the given function
-
-    **Note:** Creates a new container for each transform
-
-    **Note:** Modifies data for the duration of the contextmanager
-    """
-    data[key] = [function(o) for o in data[key]] if key in data else []
-    yield data[key]
-    data[key] = [inverse(o) for o in data[key]] if key in data else []
-
-
 __all__ = [
     'load_data',
     'left_merge',
     'extend_set',
-    'transform_set',
     'empty',
     'join_values',
 ]

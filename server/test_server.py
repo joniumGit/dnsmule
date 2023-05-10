@@ -176,7 +176,7 @@ def test_server_create_new_rule(client, mule):
 
 def test_server_get_plugins(client, mule):
     class Plugin1(Plugin):
-        _id = 'test_plugin_1'
+        id = 'test_plugin_1'
 
         def register(self, _):
             """Never called

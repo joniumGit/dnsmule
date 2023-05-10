@@ -23,7 +23,7 @@ def test_skips_underscore_kwargs():
 @pytest.mark.parametrize('value', [
     NOOPPlugin.id,
     'plugin.noop',
-    NOOPPlugin._id,
+    NOOPPlugin.id,
     NOOPPlugin,
 ])
 def test_plugins(value):

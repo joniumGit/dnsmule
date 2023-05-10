@@ -4,7 +4,7 @@ from .rule import PTRScan
 
 
 class PTRScanPlugin(Plugin):
-    _id = 'plugin.ip.ptr'
+    id = 'ip.ptr'
 
     def register(self, mule: DNSMule):
         mule.rules.register(PTRScan.id)(PTRScan.creator(mule))

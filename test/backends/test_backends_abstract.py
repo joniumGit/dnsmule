@@ -5,7 +5,8 @@ import pytest
 
 from dnsmule import Domain, RRType, Record
 from dnsmule.backends.abstract import Backend
-from dnsmule.utils import KwargClass, empty
+from dnsmule.baseclasses import KwargClass
+from dnsmule.utils import empty
 
 
 class DomainBackend(Backend):

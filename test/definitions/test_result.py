@@ -1,7 +1,6 @@
 import pytest
 
 from dnsmule import Result, RRType, Domain, Tag
-from dnsmule.utils import Comparable
 
 
 def test_result_contains_tag():
@@ -130,7 +129,3 @@ def test_result_is_sortable():
 
     results = [r2, r3, r1]
     assert sorted(results) == [r1, r2, r3], 'Failed to sort results'
-
-
-def test_result_is_comparable():
-    assert issubclass(Result, Comparable), 'Was not comparable'

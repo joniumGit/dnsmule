@@ -1,17 +1,16 @@
-from abc import ABC, abstractmethod
-from typing import List
-
-
-class Comparable(ABC):
-
-    @abstractmethod
-    def __lt__(self, other):
-        """Implement to support sorting
-        """
+from typing import List, Dict, Any
 
 
 class KwargClass:
+    """
+    Class for taking in configuration parameters and others in kwargs
+
+    Provides a property for getting the kwargs (_kwargs) and has a useful repr and str implementation.
+
+    **Note:** All kwargs which start with a '_' are ignored.
+    """
     _properties: List[str]
+    _kwargs: Dict[str, Any]
 
     def __init__(self, **kwargs):
         properties = {
@@ -40,33 +39,15 @@ class KwargClass:
         }
 
 
-class classproperty(classmethod):
-
-    def __init__(self, f):
-        super(classproperty, self).__init__(property(f))
-
-    def __set__(self, instance, value):
-        raise AttributeError('classproperty')
-
-    def __delete__(self, instance):
-        raise AttributeError('classproperty')
-
-
 class Identifiable:
-    _id: str = None
     id: str
 
-    @classproperty
-    def id(cls) -> str:
-        if cls._id:
-            return cls._id
-        else:
-            return f'{cls.__module__}.{cls.__qualname__}'
+    def __init_subclass__(cls):
+        if not hasattr(cls, 'id'):
+            cls.id = f'{cls.__module__}.{cls.__qualname__}'
 
 
 __all__ = [
-    'Comparable',
     'KwargClass',
-    'classproperty',
     'Identifiable',
 ]

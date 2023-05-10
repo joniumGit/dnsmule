@@ -4,7 +4,7 @@ from .rule import IpRangeChecker
 
 
 class IPRangesPlugin(Plugin):
-    _id = 'plugin.ip.ranges'
+    id = 'ip.ranges'
 
     def register(self, mule: DNSMule):
         mule.rules.register(IpRangeChecker)

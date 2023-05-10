@@ -1,12 +1,12 @@
 from typing import Callable, Optional, Union
 
+from ..baseclasses import KwargClass, Identifiable
 from ..definitions import RRType, Record, Result
-from ..utils import KwargClass, Comparable, Identifiable
 
 RuleFunction = Callable[[Record], Union[Result, None]]
 
 
-class Rule(KwargClass, Comparable, Identifiable):
+class Rule(KwargClass, Identifiable):
     """Wrapper class for rules to support priority based comparison
     """
     f: RuleFunction
@@ -41,6 +41,8 @@ class Rule(KwargClass, Comparable, Identifiable):
         return isinstance(other, Rule) and other.name == self.name or other == self.name
 
     def __lt__(self, other):
+        """Supports comparison
+        """
         return self.priority > other.priority
 
 

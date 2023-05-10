@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from threading import RLock
 from typing import TYPE_CHECKING, Type, Union, Dict, Any, Optional
 
-from ..utils import KwargClass, Identifiable
+from ..baseclasses import KwargClass, Identifiable
 
 if TYPE_CHECKING:  # pragma: nocover
     from ..mule import DNSMule

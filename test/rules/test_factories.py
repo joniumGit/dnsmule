@@ -56,7 +56,7 @@ def test_factories_register_a_rule():
     factory = RuleFactoryMixIn()
 
     class A(Rule):
-        _id = 'test.rule'
+        id = 'test.rule'
 
     factory.register(A)
 
@@ -67,6 +67,6 @@ def test_factories_register_a_rule_type_returns_type():
     factory = RuleFactoryMixIn()
 
     class A(Rule):
-        _id = 'test.rule'
+        id = 'test.rule'
 
     assert factory.register(A) == A

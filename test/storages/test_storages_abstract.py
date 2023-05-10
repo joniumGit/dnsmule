@@ -4,7 +4,8 @@ import pytest
 
 from dnsmule import Result, Domain
 from dnsmule.storages import Storage, Query
-from dnsmule.utils import KwargClass, empty
+from dnsmule.baseclasses import KwargClass
+from dnsmule.utils import empty
 
 
 class SimpleStorage(Storage):

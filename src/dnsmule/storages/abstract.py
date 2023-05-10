@@ -4,8 +4,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import MutableMapping, Iterator, Optional, Iterable, List, Mapping, Union, Any, Collection
 
+from ..baseclasses import KwargClass
 from ..definitions import Result, Domain, RRType
-from ..utils import KwargClass
 
 
 @dataclass

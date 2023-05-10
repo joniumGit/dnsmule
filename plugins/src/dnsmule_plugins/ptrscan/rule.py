@@ -7,7 +7,7 @@ from dnsmule.utils import extend_set
 
 
 class PTRScan(Rule):
-    _id = 'ip.ptr'
+    id = 'ip.ptr'
 
     _mule: DNSMule
 

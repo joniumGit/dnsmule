@@ -9,7 +9,7 @@ from ..definitions import Result, Record, RRType, Tag, Domain
 
 
 class RegexRule(Rule):
-    _id = 'dns.regex'
+    id = 'dns.regex'
 
     pattern: str
     patterns: List[str]
@@ -57,7 +57,7 @@ class RegexRule(Rule):
 
 
 class DynamicRule(Rule):
-    _id = 'dns.dynamic'
+    id = 'dns.dynamic'
 
     code: str
     globals: dict

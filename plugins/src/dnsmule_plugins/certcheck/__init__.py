@@ -5,7 +5,7 @@ from .rule import CertChecker
 
 
 class CertCheckPlugin(Plugin):
-    _id = 'plugin.ip.certs'
+    id = 'ip.certs'
     callback: bool = False
 
     def get_callback(self, mule: DNSMule) -> Optional[Callable[[Collection[Domain]], None]]:

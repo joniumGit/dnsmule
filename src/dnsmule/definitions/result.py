@@ -4,13 +4,13 @@ from typing import Dict, Set, Union, List, Optional
 from .domain import Domain
 from .rrtype import RRType
 from .tag import Tag
-from ..utils import left_merge, Comparable
+from ..utils import left_merge
 
 ResultData = Dict[str, Union['ResultData', List, str, int, float]]
 
 
 @dataclass(frozen=False, init=False, repr=True, eq=False, unsafe_hash=False)
-class Result(Comparable):
+class Result:
     domain: Domain
     type: Set[RRType]
     tags: Set[Tag]

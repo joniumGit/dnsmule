@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Iterable
 
 from ..definitions import Domain, RRType, Record
-from ..utils import KwargClass
+from ..baseclasses import KwargClass
 
 
 class Backend(KwargClass, ABC):

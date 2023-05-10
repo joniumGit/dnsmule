@@ -29,7 +29,7 @@ class CustomRule(Rule):
     These can be useful as you can directly register classes with the _id attribute set to whatever
     will be used in the YAML file. This is a good way to register rules if you prefer working with classes.
     """
-    _id = 'custom.rule'
+    id = 'custom.rule'
 
     def __init__(self, **kwargs):
         super(CustomRule, self).__init__(**kwargs)

@@ -7,7 +7,7 @@ from .domains import process_domains
 
 
 class CertChecker(Rule):
-    _id = 'ip.certs'
+    id = 'ip.certs'
 
     ports: List[int] = [443, 8443]
     timeout: float = 1

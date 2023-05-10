@@ -10,7 +10,7 @@ from . import ranges
 
 
 class IpRangeChecker(Rule):
-    _id = 'ip.ranges'
+    id = 'ip.ranges'
 
     providers: List[str]
 

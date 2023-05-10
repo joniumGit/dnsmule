@@ -2,8 +2,25 @@ import pathlib
 
 import pytest
 
-from dnsmule.utils import *
-from dnsmule.utils.domains import spread_domain
+from dnsmule.utils import load_data, left_merge, extend_set, transform_set, join_values, empty
+
+
+def test_empty_raises():
+    with pytest.raises(StopIteration):
+        next(empty())
+
+
+def test_join_keys():
+    a = {
+        'a': 1,
+        'b': 2,
+        'c': 3,
+    }
+    b = {
+        'b': 'test',
+        'c': 'value',
+    }
+    assert [*join_values(a, b)] == [(2, 'test'), (3, 'value')]
 
 
 @pytest.mark.parametrize('file', [
@@ -27,8 +44,8 @@ def test_load_file(file):
     ({'a': [1]}, {'a': tuple({2})}, {'a': [1, 2]}),
     ({'a': [1]}, {'a': {'a': 1}}, {'a': [1, {'a': 1}]}),
 ])
-def test_lmerge_examples(a, b, result):
-    lmerge(a, b)
+def test_left_merge_examples(a, b, result):
+    left_merge(a, b)
     assert a == result
 
 
@@ -44,56 +61,30 @@ def test_lmerge_examples(a, b, result):
     (frozenset({1}), 2, frozenset({1, 2})),
     ((1,), 2, (1, 2)),
 ])
-def test_lmerge_values(a, b, result):
+def test_left_merge_values(a, b, result):
     value1 = {'value': a}
     value2 = {'value': b}
-    lmerge(value1, value2)
+    left_merge(value1, value2)
     assert value1['value'] == result, 'Unexpected result'
 
 
-def test_lmerge_unhashable_add_to_sets():
+def test_left_merge_unhashable_add_to_sets():
     with pytest.raises(TypeError) as e:
-        lmerge({'a': {1}}, {'a': {}})
+        left_merge({'a': {1}}, {'a': {}})
     assert 'unhashable' in e.value.args[0]
     with pytest.raises(TypeError) as e:
-        lmerge({'a': frozenset({1})}, {'a': {}})
+        left_merge({'a': frozenset({1})}, {'a': {}})
     assert 'unhashable' in e.value.args[0]
 
 
-def test_lmerge_incompatible_types():
+def test_left_merge_incompatible_types():
     class A:
         pass
 
     with pytest.raises(TypeError) as e:
-        lmerge({'a': A()}, {'a': object()})
+        left_merge({'a': A()}, {'a': object()})
 
     assert 'a:' in e.value.args[0]
-
-
-@pytest.mark.parametrize('value,result', [
-    (
-            ['a.b', 'b.c', 'd.e', 'a.e'],
-            ['a.b', 'b.c', 'd.e', 'a.e'],
-    ),
-    (
-            ['a.b', '*.a.b', 'a.b', 'b.c.e'],
-            ['a.b', 'b.c.e', 'c.e'],
-    )
-])
-def test_process_domains(value, result):
-    assert set(process_domains(value)) == set(result), 'Unexpected result'
-
-
-def test_spread_domain_skips_tld():
-    assert [*spread_domain('.fi')] == [], 'Failed to skip TLD'
-
-
-def test_spread_domain_short():
-    assert [*spread_domain('a.fi')] == ['a.fi'], 'Failed to short'
-
-
-def test_spread_domain():
-    assert [*spread_domain('a.b.c.fi')] == ['c.fi', 'b.c.fi', 'a.b.c.fi'], 'Failed to produce all domains'
 
 
 def test_extend_set_order():
@@ -144,16 +135,3 @@ def test_transform_values():
     store = {'key': ['1', '2', '3']}
     transform_set(store, 'key', int)
     assert store['key'] == [1, 2, 3]
-
-
-def test_cross_contains_incompatible_types_left():
-    assert not cross_contains(['a'], 'b')
-    assert not cross_contains(['a'], None)
-
-
-def test_cross_contains():
-    assert cross_contains(['b'], 'b')
-    assert cross_contains(['b'], ['b'])
-    assert cross_contains('b', ['b'])
-    assert cross_contains('b', 'abc')
-    assert cross_contains('abc', 'b')

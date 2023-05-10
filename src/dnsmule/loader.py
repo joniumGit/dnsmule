@@ -17,7 +17,8 @@ T = TypeVar('T')
 
 
 def import_class(import_string: str, parent: Type[T], relative: bool = True, package: str = None) -> Type[T]:
-    """Imports a module and gets the last part as attribute from it
+    """
+    Imports a module and gets the last part as attribute from it
 
     **Note:** This allows arbitrary imports and code execution
     """
@@ -64,7 +65,8 @@ def load_and_append_rule(
         rule_type: str,
         config: Dict[str, Any],
 ) -> None:
-    """Creates a rule from rule definition
+    """
+    Creates a rule from rule definition
 
     Initializes any dynamic rules created and passes the add_rule callback to them
     """

@@ -1,8 +1,9 @@
 from typing import Callable, Collection, List, Optional
 
 from dnsmule import Rule, Result, Record
-from dnsmule.utils import process_domains, extend_set, transform_set
+from dnsmule.utils import extend_set, transform_set
 from . import certificates
+from .domains import process_domains
 
 
 class CertChecker(Rule):

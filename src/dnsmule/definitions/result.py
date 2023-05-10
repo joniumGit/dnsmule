@@ -4,7 +4,7 @@ from typing import Dict, Set, Union, List, Optional
 from .domain import Domain
 from .rrtype import RRType
 from .tag import Tag
-from ..utils import lmerge, Comparable
+from ..utils import left_merge, Comparable
 
 ResultData = Dict[str, Union['ResultData', List, str, int, float]]
 
@@ -38,7 +38,7 @@ class Result(Comparable):
         else:
             self.type.update(other.type)
             self.tags.update(other.tags)
-            lmerge(self.data, other.data)
+            left_merge(self.data, other.data)
             return self
 
     def __bool__(self):

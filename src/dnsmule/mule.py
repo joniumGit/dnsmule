@@ -66,7 +66,8 @@ class DNSMule:
             raise ValueError('Missing required attributes (%s)' % ','.join(missing))
 
     def append(self, config: Union[str, Path]) -> 'DNSMule':
-        """Loads rules and plugins from a yaml configuration and adds them to this mule
+        """
+        Loads rules and plugins from a yaml configuration and adds them to this mule
 
         :raises ValueError: On duplicate rules
         """
@@ -77,7 +78,8 @@ class DNSMule:
         return self
 
     def scan(self, *domains: Union[Iterable[Union[str, Domain]], Union[str, Domain]]) -> None:
-        """Scans a domain with included rules and stores te result
+        """
+        Scans a domain with included rules and stores te result
 
         Can be called with either a single argument that is an iterable of domains
         or multiple single domains.

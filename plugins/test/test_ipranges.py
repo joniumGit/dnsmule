@@ -73,3 +73,13 @@ def test_provider_empty_provider_fetch_ok():
     rule = IpRangeChecker(providers=[], name='test_rule')
     rule.check_fetch()
     assert rule._last_fetch is not None, 'Failed fetch'
+
+
+def test_fetcher_for_provider(monkeypatch):
+    sentinel = object()
+    with monkeypatch.context() as m:
+        from dnsmule_plugins.ipranges import ranges
+        m.setattr(ranges, 'fetch_mock_ip_ranges', lambda: sentinel, raising=False)
+        checker = IpRangeChecker(providers=['mock'])
+        checker.fetch_provider('mock')
+        assert checker._provider_ranges['mock'] is sentinel, 'Failed to get provider from package or failed to call'

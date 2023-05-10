@@ -1,7 +1,23 @@
 from pathlib import Path
-from typing import Union, Dict, Any, Iterable, Callable
+from typing import Union, Callable, Iterator, TypeVar, Any, Dict, Tuple, Iterable
 
-from .iterables import limit as limit_iterable
+K = TypeVar('K')
+V = TypeVar('V')
+R = TypeVar('R')
+
+
+def empty() -> Iterator[Any]:
+    """An empty iterable
+    """
+    return iter([])
+
+
+def join_values(a: Dict[K, V], b: Dict[K, R]) -> Iterable[Tuple[V, R]]:
+    """Yields the values from two dicts for keys that are present in both
+    """
+    for k, v in a.items():
+        if k in b:
+            yield v, b[k]
 
 
 def csv_stripped(line):
@@ -13,7 +29,8 @@ def txt_stripped(line):
 
 
 def load_data(file: Union[str, Path], limit: int = -1):
-    """Loads target data from either a .csv of .txt file
+    """
+    Loads target data from either a .csv of .txt file
 
     If the file is a .csv file it is assumed to be of the form:
 
@@ -37,11 +54,12 @@ def load_data(file: Union[str, Path], limit: int = -1):
         if limit < 0:
             yield from data
         else:
-            yield from limit_iterable(data, n=limit)
+            yield from (value for _, value in zip(range(limit), data))
 
 
-def lmerge(a: Dict[str, Any], b: Dict[str, Any]):
-    """Left merge two dicts
+def left_merge(a: Dict[str, Any], b: Dict[str, Any]):
+    """
+    Left merge two dicts
 
     Left merging merges all values from the right dictionary into the left one.
     Any value not present in the left one is added as is.
@@ -77,7 +95,7 @@ def lmerge(a: Dict[str, Any], b: Dict[str, Any]):
             else:
                 raise TypeError(f'Value types for key {k} are incompatible a: {type(a[k])} b: {type(a[k])}')
         elif isinstance(a[k], dict):
-            lmerge(a[k], b[k])
+            left_merge(a[k], b[k])
         elif isinstance(a[k], list):
             a[k].extend(b[k])
         elif isinstance(a[k], set):
@@ -91,6 +109,13 @@ def lmerge(a: Dict[str, Any], b: Dict[str, Any]):
 
 
 def extend_set(data: Dict[str, Any], key: str, values: Iterable[Any]):
+    """
+    Appends values to a list based set
+
+    **Note:** This is inefficient as it uses list traversal to check duplicates
+
+    **Note:** This also de-duplicates the existing collection
+    """
     target = []
     if key in data:
         values = [*data[key], *values]
@@ -101,27 +126,22 @@ def extend_set(data: Dict[str, Any], key: str, values: Iterable[Any]):
 
 
 def transform_set(data: Dict[str, Any], key: str, f: Callable[[Any], Any]):
+    """
+    Transforms a list based set using the given function
+
+    **Note:** Creates a new container
+    """
     if key in data:
         data[key] = [f(o) for o in data[key]]
     else:
         data[key] = []
 
 
-def contains(a: Any, b: Any) -> bool:
-    try:
-        return hasattr(a, '__contains__') and b in a
-    except TypeError:
-        return False
-
-
-def cross_contains(a: Any, b: Any) -> bool:
-    return a == b or contains(a, b) or contains(b, a)
-
-
 __all__ = [
     'load_data',
-    'lmerge',
+    'left_merge',
     'extend_set',
     'transform_set',
-    'cross_contains',
+    'empty',
+    'join_values',
 ]

@@ -31,9 +31,23 @@ Creates a list of top domains from a file::
 
 """
 from argparse import ArgumentParser
-from typing import List
+from collections import Counter
+from typing import List, Tuple, Callable, Iterable, TypeVar
 
-from dnsmule.utils import count_by, load_data
+from dnsmule.utils import load_data
+
+T = TypeVar('T')
+R = TypeVar('R')
+
+
+def count_by(
+        iterable: Iterable[T],
+        f: Callable[[T], R],
+        n: int = None,
+) -> Iterable[Tuple[R, int]]:
+    """Counts values in an iterable using a given transformation
+    """
+    return iter(Counter(map(f, iterable)).most_common(n=n))
 
 
 def main(file_lines: List[str], n: int = 10):

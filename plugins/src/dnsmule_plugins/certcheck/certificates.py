@@ -163,7 +163,8 @@ def collect_certificates(host: str, port: int, **kwargs) -> List[Certificate]:
 
 
 def resolve_domain_from_certificate(cert: Certificate) -> List[str]:
-    """Returns all names from a certificate retrieved from an ip-address
+    """
+    Returns all names from a certificate retrieved from an ip-address
 
     Common name is the first one if available followed by any alternative names
     """

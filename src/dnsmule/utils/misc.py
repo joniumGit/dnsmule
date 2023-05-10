@@ -1,9 +1,11 @@
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Union, Callable, Iterator, TypeVar, Any, Dict, Tuple, Iterable
 
 K = TypeVar('K')
 V = TypeVar('V')
 R = TypeVar('R')
+T = TypeVar('T')
 
 
 def empty() -> Iterator[Any]:
@@ -110,7 +112,7 @@ def left_merge(a: Dict[str, Any], b: Dict[str, Any]):
 
 def extend_set(data: Dict[str, Any], key: str, values: Iterable[Any]):
     """
-    Appends values to a list based set
+    Appends values to a list based set in a dictionary
 
     **Note:** This is inefficient as it uses list traversal to check duplicates
 
@@ -125,16 +127,18 @@ def extend_set(data: Dict[str, Any], key: str, values: Iterable[Any]):
     data[key] = target
 
 
-def transform_set(data: Dict[str, Any], key: str, f: Callable[[Any], Any]):
+@contextmanager
+def transform_set(data: Dict[str, Any], key: str, function: Callable[[T], R], inverse: Callable[[R], T]) -> None:
     """
     Transforms a list based set using the given function
 
-    **Note:** Creates a new container
+    **Note:** Creates a new container for each transform
+
+    **Note:** Modifies data for the duration of the contextmanager
     """
-    if key in data:
-        data[key] = [f(o) for o in data[key]]
-    else:
-        data[key] = []
+    data[key] = [function(o) for o in data[key]] if key in data else []
+    yield data[key]
+    data[key] = [inverse(o) for o in data[key]] if key in data else []
 
 
 __all__ = [

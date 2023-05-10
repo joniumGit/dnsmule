@@ -37,9 +37,13 @@ class CertChecker(Rule):
             )
         }
         if certs:
-            transform_set(record.result.data, 'resolvedCertificates', certificates.Certificate.from_json)
-            extend_set(record.result.data, 'resolvedCertificates', certs)
-            transform_set(record.result.data, 'resolvedCertificates', certificates.Certificate.to_json)
+            with transform_set(
+                    record.result.data,
+                    'resolvedCertificates',
+                    certificates.Certificate.from_json,
+                    certificates.Certificate.to_json
+            ):
+                extend_set(record.result.data, 'resolvedCertificates', certs)
             if self.callback:
                 domains = [*process_domains(
                     domain

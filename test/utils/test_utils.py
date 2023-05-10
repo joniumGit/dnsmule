@@ -120,18 +120,19 @@ def test_extend_set_de_duplicates_new():
 
 def test_transform_adds_value():
     store = {}
-    transform_set(store, 'key', int)
-    assert 'key' in store, 'Failed to add value'
+    with transform_set(store, 'key', int, str):
+        assert 'key' in store, 'Failed to add value'
 
 
 def test_transform_creates_new_list():
     target = ['1', '2', '3']
     store = {'key': target}
-    transform_set(store, 'key', int)
-    assert store['key'] is not target
+    with transform_set(store, 'key', int, str):
+        assert store['key'] is not target
 
 
 def test_transform_values():
     store = {'key': ['1', '2', '3']}
-    transform_set(store, 'key', int)
-    assert store['key'] == [1, 2, 3]
+    with transform_set(store, 'key', int, str):
+        assert store['key'] == [1, 2, 3]
+    assert store['key'] == ['1', '2', '3']

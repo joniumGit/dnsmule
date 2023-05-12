@@ -1,4 +1,3 @@
-import re
 from logging import INFO, StreamHandler
 from pathlib import Path
 from textwrap import dedent
@@ -8,7 +7,7 @@ from urllib.parse import unquote
 from fastapi import FastAPI, Query, BackgroundTasks, Depends
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.responses import JSONResponse, Response
-from pydantic import BaseModel, validator, ValidationError, Extra, constr
+from pydantic import BaseModel, validator, ValidationError, Extra
 
 from dnsmule import DNSMule, RRType, __version__, Domain
 from dnsmule.logger import get_logger
@@ -89,21 +88,15 @@ class RuleDefinition(BaseModel):
 
 
 class ResultQuery(BaseModel):
-    domains: Optional[constr(regex=r'(?:[^,]+,)*[^,]+')]
-    types: Optional[constr(regex=r'(?:(?:[A-Za-z]+|\d+),)*(?:[A-Za-z]+|\d+)')]
+    domains: Optional[str]
+    types: Optional[str]
     tags: Optional[str]
     data: Optional[str]
 
-    @validator('*')
+    @validator('*', pre=True)
     def escapes(cls, value):
         if value:
             return unquote(value)
-
-    @validator('tags', 'data')
-    def compile(cls, value):
-        if value:
-            re.compile(value, flags=re.UNICODE)
-            return value
 
     @validator('types')
     def validate(cls, value):
@@ -521,10 +514,7 @@ async def search_results(
         query: ResultQuery = Depends(),
         mule: DNSMule = Depends(get_mule),
 ):
-    kwargs = query.dict(exclude_none=True, exclude_defaults=True)
-    for k in ['domains', 'types']:
-        if k in kwargs:
-            kwargs[k] = kwargs[k].split(',')
+    kwargs = {k: v.split(',') for k, v in query.dict(exclude_none=True, exclude_defaults=True).items()}
     return {
         'results': [
             result_to_json_data(result)

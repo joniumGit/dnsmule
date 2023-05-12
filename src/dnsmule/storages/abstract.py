@@ -2,15 +2,26 @@ import contextlib
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import MutableMapping, Iterator, Optional, Iterable, List, Mapping, Union, Any, Collection
+from typing import MutableMapping, Iterator, Optional, Iterable, List, Mapping, Union, Literal, Generic, TypeVar, \
+    Collection
 
 from ..baseclasses import KwargClass
 from ..definitions import Result, Domain, RRType
 
+T = TypeVar('T')
+
 
 @dataclass
 class Query:
-    domains: Collection[Union[str, Domain]] = None
+    """
+    Searches for results
+
+    Storage implementations can provide additional query functionality by extending this class
+
+    **Note:** All searches are case-sensitive by default
+    """
+
+    domains: Iterable[Union[str, Domain]] = None
     """
     Collection of domains in the following forms:
 
@@ -18,66 +29,93 @@ class Query:
     - *.domain.tld
     """
 
-    types: Collection[Union[str, int, RRType]] = None
-    """Collection of Resource Record types to query.
+    types: Iterable[Union[str, int, RRType]] = None
+    """
+    Collection of Resource Record types to query.
+    
+    The types can be RRType, int, or str type
     """
 
-    tags: str = None
-    """Search the tags using regex
+    tags: Iterable[str] = None
+    """
+    Search the result tag
+    
+    This collection allows for wildcard matches in tags using the '*' character::
+    
+        DNS::REGEX::*
+        *::EU-FRA1
+        *::REGEX::*
 
-    The tags are in teh format MODULE::TYPE::NAME(::DATA)*
+    The tags are usually in the format::
+    
+        MODULE::TYPE::NAME(::DATA){0,n}
+    
+    The checks are done as follows:
+    
+        search == tag or tags.startswith(search) or tag.endswith(tag)
+    
+    Searching for matches in a lot of string which are not bound might produce bad matches and consume time.
     """
 
-    data: Any = None
-    """This is used to query the Data attribute in the Result
-
-    NotImplementedError if this is not implemented in storage driver
+    data: Iterable[str] = None
+    """
+    Provider search capability for keys of data
+    
+    No further search capability is provided here, but drivers are free to expand this
     """
 
 
-class DefaultQuerier:
-    """Implements crude search capability
+class WildcardCollection(Generic[T]):
+    """
+    Collection of values with wildcards
+
+    The wildcard values will also serve as exact matches
     """
 
-    domains: Collection[str]
-    types: Collection[str]
-    tags: re.Pattern
-    data: re.Pattern
+    def __init__(self, values: Iterable[T]):
+        self.exact = {*values}
+        self.prefix = []
+        self.suffix = []
+        self.search = []
+        for value in self.exact:
+            stars = value.count('*')
+            if stars > 1:
+                self.search.append(re.compile(re.escape(value).replace(re.escape('*'), '.*'), flags=re.UNICODE))
+            elif stars == 1 and value.endswith('*'):
+                self.prefix.append(value[:-1])
+            elif stars == 1 and value.startswith('*'):
+                self.suffix.append(value[1:])
 
-    @classmethod
-    def create(cls, query: Query):
-        return cls(query)
+    def __contains__(self, item: T) -> bool:
+        return (
+                item in self.exact
+                or any(item.startswith(prefix) for prefix in self.prefix)
+                or any(item.endswith(suffix) for suffix in self.suffix)
+                or any(pattern.search(item) for pattern in self.search)
+        )
+
+
+class BasicSearch:
+    """Implements basic search capability
+    """
+    domains: Union[WildcardCollection, Literal[False]]
+    types: Union[Collection[RRType], Literal[False]]
+    tags: Union[WildcardCollection, Literal[False]]
+    data: Union[Collection[str], Literal[False]]
 
     def __init__(self, query: Query):
-        self.domains = {*query.domains} if query.domains else None
-        self.types = {RRType.from_any(o) for o in query.types} if query.types else None
-        self.tags = re.compile(query.tags, flags=re.UNICODE) if query.tags else None
-        self.data = re.compile(str(query.data), flags=re.UNICODE) if query.data else None
+        self.domains = WildcardCollection(query.domains) if query.domains else False
+        self.types = {*map(RRType.from_any, query.types)} if query.types else False
+        self.tags = WildcardCollection(query.tags) if query.tags else False
+        self.data = {*query.data} if query.data else False
 
-    def check_data(self, r: Result) -> bool:
-        return not self.data or self.data.search(str(r.data))
-
-    def check_tags(self, r: Result) -> bool:
-        return not self.tags or any(
-            self.tags.search(t)
-            for t in r.tags
+    def __call__(self, r: Result):
+        return (
+                (not self.domains or r.domain in self.domains)
+                and (not self.types or any(map(self.types.__contains__, r.type)))
+                and (not self.tags or any(map(self.tags.__contains__, r.tags)))
+                and (not self.data or any(map(self.data.__contains__, r.data.keys())))
         )
-
-    def check_types(self, r: Result) -> bool:
-        return not self.types or any(
-            t in self.types
-            for t in r.type
-        )
-
-    def check_domains(self, r: Result) -> bool:
-        return not self.domains or r.domain in self.domains or any(
-            r.domain.endswith(domain[1:])
-            for domain in self.domains
-            if domain.startswith('*')
-        )
-
-    def __call__(self, r: Result) -> bool:
-        return self.check_domains(r) and self.check_types(r) and self.check_tags(r) and self.check_data(r)
 
 
 class StorageBase(KwargClass, ABC):
@@ -232,17 +270,18 @@ class PrefixedKeyValueStorage(Storage, ABC):
         yield from map(self.fetch, self.domains())
 
     def query(self, query: Query) -> Iterable[Result]:
-        query = DefaultQuerier.create(query)
+        query = BasicSearch(query)
         yield from filter(query, self.results())
 
 
 __all__ = [
     'Storage',
     'Query',
-    'DefaultQuerier',
+    'BasicSearch',
     'PrefixedKeyValueStorage',
     'JsonData',
     'Query',
     'result_to_json_data',
     'result_from_json_data',
+    'WildcardCollection',
 ]

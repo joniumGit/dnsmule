@@ -245,8 +245,8 @@ def test_server_create_new_rule_rule_failure(client, mule):
 @pytest.mark.parametrize('search', [
     'domains=*.example.com,example.com',
     'domains=*.example.com&types=CNAME,TXT',
-    'data=^[^s]*set.:.*$',
-    'tags=^IP::PTR::.*?::AWS$',
+    'data=set,key',
+    'tags=IP::PTR::*,DNS::*',
 ])
 def test_server_search_result(client, mule, search):
     result = Result(
@@ -259,10 +259,16 @@ def test_server_search_result(client, mule, search):
     result.data['set'] = ['value_1', 'value_2']
     mule.storage[result.domain] = result
 
+    result2 = Result(
+        initial_type=RRType.A,
+        domain=Domain('sample.sample')
+    )
+    mule.storage[result2.domain] = result2
+
     r = client.get(f'/search?{search}')
     assert r.status_code == 200, 'Failed to find results'
     assert r.json() == {
         'results': [
             result_to_json_data(result),
         ]
-    }, 'Result output was different'
+    }, 'Result output was different for search %r' % search

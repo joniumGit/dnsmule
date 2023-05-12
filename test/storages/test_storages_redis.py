@@ -33,7 +33,7 @@ class TestStoragesRedis(StoragesTestRedisBase):
 
     @pytest.fixture(scope='class')
     def storage(self, storage_params):
-        from dnsmule.storages.redis import RedisStorage
+        from dnsmule.storages import RedisStorage
         yield RedisStorage(**storage_params)
 
 
@@ -41,5 +41,5 @@ class TestStoragesRedisJson(StoragesTestRedisBase):
 
     @pytest.fixture(scope='class')
     def storage(self, storage_params):
-        from dnsmule.storages.redis import RedisJSONStorage
+        from dnsmule.storages import RedisJSONStorage
         yield RedisJSONStorage(**storage_params)

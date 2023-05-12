@@ -1,7 +1,7 @@
 import pytest
 
 from _storages import StoragesTestBase
-from dnsmule.storages.dictstorage import DictStorage
+from dnsmule.storages import DictStorage
 
 
 class TestDictStorage(StoragesTestBase):

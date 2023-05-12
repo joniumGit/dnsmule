@@ -11,8 +11,8 @@ class TestStoragesMongo(ContainerStorageTestBase):
 
     @pytest.fixture(scope='class')
     def storage(self, storage_params):
-        from dnsmule.storages.mongodb import MongoDB
-        yield MongoDB(**storage_params)
+        from dnsmule.storages.mongodbstorage import MongoStorage
+        yield MongoStorage(**storage_params)
 
     @pytest.fixture(scope='function', autouse=True)
     def flush(self, storage):

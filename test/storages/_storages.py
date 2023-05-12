@@ -2,17 +2,13 @@ from abc import ABC, abstractmethod
 
 import pytest
 
+from _search import SearchTests
 from dnsmule import Result, RRType
 from dnsmule.storages import Query
 
 
 # noinspection PyMethodMayBeStatic
-class StoragesTestBase(ABC):
-
-    @abstractmethod
-    def storage(self, *fixtures):
-        """Returns storage for tests
-        """
+class StoragesTestBase(SearchTests, ABC):
 
     def test_contains(self, generate_result, storage):
         r = generate_result()
@@ -93,7 +89,6 @@ class StoragesTestBase(ABC):
             domains=[],
             types=[],
             tags='',
-            data=False,
         ))] == [r1], 'Failed to match with empty query'
 
     def test_search_domain_simple(self, storage, generate_result):
@@ -154,7 +149,7 @@ class StoragesTestBase(ABC):
         r2.tags.add('IP::REGEX::SAMPLE::TAG1')
         storage.store(r1)
         storage.store(r2)
-        assert [*storage.query(Query(tags=r'^ABC::|^DNS::.*$'))] == [r1], 'Failed to match by tag regex'
+        assert [*storage.query(Query(tags=['ABC::*', 'DNS::*']))] == [r1], 'Failed to match by tag regex'
 
     def test_search_data(self, storage, generate_result):
         r1 = generate_result()
@@ -163,30 +158,9 @@ class StoragesTestBase(ABC):
         storage.store(r1)
         storage.store(r2)
         try:
-            assert [*storage.query(Query(data='search-tag'))] == [r1], 'Failed to match by data'
+            assert [*storage.query(Query(data=['search-tag']))] == [r1], 'Failed to match by data'
         except NotImplementedError:
             pytest.skip('Storage Does not implement search for data')
-
-    @pytest.mark.parametrize('attrs,query', [
-        (
-                {
-                    'domain': 'a.example.com',
-                    'type': {RRType.A, RRType.MX},
-                    'tags': {'DNS::REGEX::TEST::A', 'DNS::DYNAMIC::SAMPLE::B'},
-                },
-                Query(
-                    domains=['a.example.com'],
-                    types=[RRType.A, RRType.TXT],
-                    tags='^DNS::(?!D)',
-                ),
-        ),
-    ])
-    def test_search_samples(self, storage, generate_result, attrs, query):
-        r = generate_result()
-        for k, v in attrs.items():
-            setattr(r, k, v)
-        storage.store(r)
-        assert [*storage.query(query)] == [r], 'Match failed for %r with %r' % (r, query)
 
 
 # noinspection PyMethodMayBeStatic

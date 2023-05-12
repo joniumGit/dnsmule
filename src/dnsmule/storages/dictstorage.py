@@ -1,7 +1,7 @@
 from threading import RLock
 from typing import Iterable, Dict, Optional
 
-from .abstract import Storage, Query, DefaultQuerier
+from .abstract import Storage, Query, BasicSearch
 from .. import Result, Domain
 
 
@@ -35,7 +35,7 @@ class DictStorage(Storage):
             yield k
 
     def query(self, query: Query) -> Iterable[Result]:
-        query = DefaultQuerier.create(query)
+        query = BasicSearch(query)
         for result in self.results():
             if query(result):
                 yield result

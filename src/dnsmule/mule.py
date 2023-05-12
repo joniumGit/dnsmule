@@ -104,8 +104,8 @@ class DNSMule:
             self,
             domains: Collection[Union[str, Domain]] = None,
             types: Collection[Union[str, int, RRType]] = None,
-            tags: str = None,
-            data: str = None,
+            tags: Collection[str] = None,
+            data: Collection[str] = None,
     ):
         """Search for a result given the parameters
         """

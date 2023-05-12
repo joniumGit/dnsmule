@@ -141,24 +141,14 @@ def test_search_works(generate_result):
     mule = DNSMule.make()
     res = generate_result()
     res.tag('test')
-    res.data['test_value'] = 'test_key'
+    res.data['test_key'] = 'test_value'
     res.data['test_collection'] = ['test_1', 'test_2']
     res.types = {RRType.A, RRType.TXT}
     mule.storage.store(res)
 
-    assert next(iter(mule.search(domains=[res.domain, 'b.com', 'c.com']))) is not None, 'Failed to find result'
-    assert next(iter(mule.search(tags='^test'))) is not None, 'Failed to find result'
-    assert next(iter(mule.search(data='test_value'))) is not None, 'Failed to find result'
+    assert next(iter(mule.search(domains=[res.domain]))) is not None, 'Failed to find result with domain'
+    assert next(iter(mule.search(tags=['test*']))) is not None, 'Failed to find result with tag'
+    assert next(iter(mule.search(data=['test_key']))) is not None, 'Failed to find result with data'
 
     with pytest.raises(StopIteration):
         next(iter(mule.search(domains=[res.domain[1:]], tags='test')))
-
-
-def test_search_works_2(generate_result):
-    mule = DNSMule.make()
-
-    res = generate_result()
-    res.type.add(RRType.A)
-    mule.storage.store(res)
-
-    assert next(iter(mule.search(types=['A', 'TXT']))) is not None, 'Failed to find result'

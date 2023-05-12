@@ -1,15 +1,59 @@
+import re
 from typing import Iterable, Optional
 
-from .abstract import Storage, result_from_json_data, result_to_json_data, Query, DefaultQuerier
+from .abstract import Storage, result_from_json_data, result_to_json_data, Query, BasicSearch, WildcardCollection
 from .. import Result, Domain, RRType
 
 
-class MongoDB(Storage):
+def to_mongo_condition(key: str, collection: WildcardCollection) -> dict:
+    conditions = [
+        {
+            key: {
+                '$in': [*collection.exact],
+            }
+        }
+    ]
+    if collection.prefix:
+        for prefix in collection.prefix:
+            conditions.append({
+                key: {
+                    '$regex': f'^{re.escape(prefix)}',
+                }
+            })
+    if collection.suffix:
+        for suffix in collection.suffix:
+            conditions.append({
+                key: {
+                    '$regex': f'{re.escape(suffix)}$',
+                }
+            })
+    if collection.search:
+        for search in collection.search:
+            conditions.append({
+                key: {
+                    '$regex': search.pattern
+                }
+            })
+    return conditions[0] if len(conditions) == 1 else {'$or': conditions}
+
+
+def mongo_and(*conditions: dict) -> dict:
+    if len(conditions) == 1:
+        return conditions[0]
+    elif len(conditions) == 0:
+        return {}
+    else:
+        return {
+            '$and': conditions,
+        }
+
+
+class MongoStorage(Storage):
     database: str = 'dnsmule'
     collection: str = 'results'
 
     def __init__(self, **kwargs):
-        super(MongoDB, self).__init__(**kwargs)
+        super(MongoStorage, self).__init__(**kwargs)
         import pymongo
         driver_kwargs = self._kwargs
         driver_kwargs.pop('database', None)
@@ -65,48 +109,29 @@ class MongoDB(Storage):
             yield from map(result_from_json_data, cursor)
 
     def query(self, query: Query) -> Iterable[Result]:
-        and_part = []
-        if query.domains:
-            domains_in = [d for d in query.domains if not d.startswith('*')]
-            domains_re = [{'domain': {'$regex': f'{d[1:]}$'}} for d in query.domains if d.startswith('*')]
-            if domains_in and domains_re:
-                and_part.append({
-                    '$or': [
-                        {
-                            'domain': {
-                                '$in': domains_in,
-                            },
-                        },
-                        *domains_re,
-                    ],
-                })
-            elif domains_in:
-                and_part.append({
-                    'domain': {
-                        '$in': domains_in,
-                    },
-                })
-            else:  # No other choices
-                and_part.append({
-                    '$or': domains_re,
-                })
-        if query.types:
-            and_part.append({
+        conditions = []
+        bs = BasicSearch(query)
+        if bs.domains:
+            conditions.append(to_mongo_condition('domain', bs.domains))
+        if bs.types:
+            conditions.append({
                 'type': {
-                    '$in': [str(RRType.from_any(t)) for t in query.types],
+                    '$in': [str(RRType.from_any(t)) for t in bs.types],
                 }
             })
-        if query.tags:
-            and_part.append({
-                'tags': {
-                    '$regex': str(query.tags)
-                }
-            })
-        search = {'$and': and_part} if and_part else {}
-        with self._collection.find(search) as cursor:
-            yield from filter(DefaultQuerier.create(query).check_data, map(result_from_json_data, cursor))
+        if bs.tags:
+            conditions.append(to_mongo_condition('tags', bs.tags))
+        if bs.data:
+            for key in bs.data:
+                conditions.append({
+                    f'data.{key}': {
+                        '$exists': True,
+                    }
+                })
+        with self._collection.find(mongo_and(*conditions)) as cursor:
+            yield from map(result_from_json_data, cursor)
 
 
 __all__ = [
-    'MongoDB',
+    'MongoStorage',
 ]

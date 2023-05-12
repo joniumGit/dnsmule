@@ -1,46 +1,6 @@
 import pytest
 
-from dnsmule_plugins.certcheck.domains import lagging_filter, filter_locally_unique, process_domains, spread_domain
-
-
-@pytest.mark.parametrize('i,lag,result', [
-    (
-            ['a', 'a', 'a', 'b', 'b'],
-            1,
-            ['a', 'b'],
-    ),
-    (
-            ['a', 'b', 'c', 'a', 'b', 'c'],
-            3,
-            ['a', 'b', 'c'],
-    ),
-    (
-            ['a', 'b', 'c', 'd', 'a', 'b', 'c', 'd'],
-            3,
-            ['a', 'b', 'c', 'd', 'a', 'b', 'c', 'd'],
-    ),
-    (
-            ['a', 'b', 'c', 'd', 'a', 'b', 'c', 'd'],
-            2,
-            ['a', 'b', 'c', 'd', 'a', 'b', 'c', 'd'],
-    ),
-    (
-            ['a', 'b', 'c', 'd', 'a', 'a', 'b', 'b'],
-            2,
-            ['a', 'b', 'c', 'd', 'a', 'b'],
-    ),
-])
-def test_lagging_filter(i, lag, result):
-    assert [*filter_locally_unique(i, lag=lag)] == result, 'Did not filter'
-
-
-@pytest.mark.parametrize('lag', [
-    0,
-    -1,
-])
-def test_lagging_filter_value_error(lag):
-    with pytest.raises(ValueError):
-        lagging_filter(lag)
+from dnsmule_plugins.certcheck.domains import process_domains, spread_domain
 
 
 @pytest.mark.parametrize('value,result', [

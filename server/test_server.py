@@ -58,12 +58,12 @@ def test_server_get_results_items(client, mule):
 
 
 def test_server_scan_domain(client):
-    r = client.post('/scan?domain=a.example.com')
+    r = client.post('/scan?domain=*.example.com')
     assert r.status_code == 202, 'Failed to start processing'
 
     r = client.get('/results')
     assert r.status_code == 200, 'Failed to find results'
-    assert r.json()['results'][0]['domain'] == 'a.example.com', 'Failed to show in results'
+    assert r.json()['results'][0]['domain'] == '*.example.com', 'Failed to show in results'
 
 
 def test_server_scan_domain_single_result(client):

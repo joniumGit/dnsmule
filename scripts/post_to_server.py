@@ -20,7 +20,7 @@ async def main():
     try:
         skip = args.skip
         for domain in filter(
-                lambda line: not line.startswith('*') and not args.suffix or line.endswith(args.suffix),
+                lambda line: not args.suffix or line.endswith(args.suffix),
                 load_data(args.file)
         ):
             n += 1

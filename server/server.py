@@ -57,7 +57,7 @@ def startup():
 
 
 def domain_query(default=...):
-    def _domain(domain: str = Query(default, max_length=63, min_length=1)):
+    def _domain(domain: str = Query(default, max_length=255, min_length=1)):
         if domain:
             return unquote(domain)
 

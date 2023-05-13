@@ -61,7 +61,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('input', type=argparse.FileType('r', encoding='utf8'))
     parser.add_argument('output', type=argparse.FileType('w', encoding='utf8'))
-    parser.add_argument('subdomains', type=str, nargs='+', default=['*.www', 'www', '*'])
+    parser.add_argument('subdomains', type=str, nargs='*')
     parser.add_argument('--top', type=int, default=20)
     args = parser.parse_args()
 

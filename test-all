@@ -1,2 +1,0 @@
-#!/bin/bash
-pytest -c pytest-all.ini

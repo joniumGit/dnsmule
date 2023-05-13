@@ -24,7 +24,7 @@ class IpRangeChecker(Rule):
         kwargs['code'] = 'pass'
         super().__init__(**kwargs)
         self.globals = {}
-        self.providers = [*{*self.providers}] if hasattr(self, 'providers') else []
+        self.providers = [*{*self.providers}] if hasattr(self, 'providers') else Providers.all()
         self._provider_ranges = cast(Dict[str, List[IPvXRange]], {})
         for provider in self.providers:
             if not Providers.available(provider):

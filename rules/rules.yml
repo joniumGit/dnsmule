@@ -1,10 +1,9 @@
-version: '0.5.0'
+version: '0.6.0'
 storage:
-  name: redis.RedisStorage
+  name: RedisJSONStorage
   fallback: true
   config:
-    use_json: true
-    host: 127.0.0.1
+    host: redis
     port: 6379
 backend:
   name: dnspython.DNSPythonBackend
@@ -13,7 +12,7 @@ backend:
 plugins:
   - name: dnsmule_plugins.CertCheckPlugin
     config:
-      callback: false
+      callback: true
   - name: dnsmule_plugins.IPRangesPlugin
   - name: dnsmule_plugins.PTRScanPlugin
 rules:
@@ -56,21 +55,21 @@ rules:
     description:
       Checks certificates for more domains to scan and tags issuers.
       Also, records all certificates to result data.
+    config:
+      callback: false
   - name: ipranges
     type: ip.ranges
     record: A
     description:
       Checks common cloud provider ipranges for matches.
-    config:
-      providers:
-        - amazon
-        - microsoft
-        - google
   - name: textlog
     description: Logs possibly interesting TXT records
     type: dns.dynamic
     record: txt
     config:
+      separators:
+        - '='
+        - ':'
       code: |
         from dnsmule.logger import get_logger
         
@@ -78,42 +77,62 @@ rules:
         seen = set()
         
         
+        def partition_unique(value: str):
+            for sign in Config.separators:
+                if sign in value:
+                    start, sep, end = value.partition(sign)
+                    return start
+        
+        
         def process(record: Record) -> None:
-            start, sep, end = record.text.partition('=')
-            if sep and start not in seen:
-                seen.add(start)
-                logger.info('TEXTLOG: (%s %s) %s', str(record.type), record.domain, start)
+            key = partition_unique(record.text)
+            if key and key not in seen:
+                seen.add(key)
+                logger.info('TEXTLOG: Found key %r from %r', key, record.domain)
   - name: cider
     type: dns.dynamic
     record: cname
     config:
+      description: |
+        Creates tags with the DNS::CIDER::TYPE::PROVIDER::SERVICE format.
+        Also, appends CNAMEs to resolvedAliases in order to later map possible alias results back to correct domains.
       identities:
-        - name: Akamai
+        - name: AKAMAI::EDGEKEY
           type: CDN
           value: edgekey.net
-        - name: Cloudflare
+        - name: CLOUDFLARE::CLOUDFLARE
           type: CDN
           value: cloudflare.net
-        - name: Cloudfront
+        - name: AMAZON::CLOUDFRONT
           type: CDN
           value: cloudfront.net
-        - name: Azure
+        - name: MICROSOFT::AZURE
           type: CDN
           value: azureedge.net
-        - name: Accelerator
+        - name: AMAZON::GLOBALACCELERATOR
           type: HA
           value: awsglobalaccelerator.com
-        - name: AWS
+        - name: AMAZON::AWS
           type: SAAS
           value: amazonaws.com
-        - name: Simpli
+        - name: SIMPLI::SIMPLI
           type: ADS
           value: simple.fi
-        - name: Doubleclick
+        - name: DOUBLECLICK::DOUBLECLICK
           type: ADS
           value: doubleclick.net
+        - name: DIGITALOCEAN::APPPLATFORM
+          type: VPS
+          value: ondigitalocean.app
+        - name: FASTLY::FASTLY
+          type: CDN
+          value: fastly.net
       code: |
-        def process(record: Record) -> Result:
+        from dnsmule.utils import extend_set
+        
+        
+        def process(record: Record):
+            extend_set(record.result.data, 'resolvedAliases', [record.text])
             for o in Config.identities:
                 key = o['value']
                 if key in record.text:

@@ -152,3 +152,18 @@ def test_search_works(generate_result):
 
     with pytest.raises(StopIteration):
         next(iter(mule.search(domains=[res.domain[1:]], tags='test')))
+
+
+def test_mule_adds_instance_to_context():
+    mule = DNSMule.make()
+    called = []
+
+    @mule.rules.add.A
+    def assertion_rule(record):
+        assert record.context['mule'] is mule
+        called.append('rule')
+
+    mule.backend.run = lambda *_: iter([Record(Domain('example.com'), RRType.A, 'value')])
+
+    mule.scan('example.com')
+    assert called == ['rule']

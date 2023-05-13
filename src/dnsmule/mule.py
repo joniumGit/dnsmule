@@ -92,6 +92,7 @@ class DNSMule:
             if domain not in self.storage:
                 self.storage.store(Result(domain))
         for record in self.backend.run(domains, *self.rules.types):
+            record.context['mule'] = self  # Adds instance to context so that rules can access it
             with self.storage.using(record.result):
                 self.rules.process(record)
 

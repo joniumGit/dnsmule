@@ -1,8 +1,10 @@
 from typing import Callable, Collection, List, Optional
 
 from dnsmule import Rule, Result, Record
+from dnsmule.utils import extend_set
 from . import certificates
 from .domains import process_domains
+from .adapter import load_result, save_result
 
 
 class CertChecker(Rule):
@@ -36,12 +38,15 @@ class CertChecker(Rule):
             )
         }
         if certs:
-            record.result.data.setdefault('resolvedCertificates', set()).update(certs)
+            load_result(record.result)
+            extend_set(record.result.data, 'resolvedCertificates', certs)
+            save_result(record.result)
             if self.callback:
                 domains = [*process_domains(
                     domain
                     for cert in certs
                     for domain in certificates.resolve_domain_from_certificate(cert)
+                    if domain != record.domain
                 )]
                 self._callback(*domains)
         return record.result

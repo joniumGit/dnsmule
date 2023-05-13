@@ -43,10 +43,12 @@ setup(
         'dnsmule',
     ],
     extras_require={
-        'certs': [
+        'dev': [
+            'pytest',
+            'pytest-cov',
             'cryptography',
         ],
-        'all': [
+        'full': [
             'cryptography',
         ]
     },

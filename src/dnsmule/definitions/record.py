@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Union
+from typing import Any, Union, Dict
 
 from .domain import Domain
 from .result import Result
@@ -13,6 +13,10 @@ class Record:
     type: RRType
     data: Any
 
+    context: Dict[str, Any]
+    """Provides a place to attach arbitrary metadata to the Record
+    """
+
     _result: Result
 
     # noinspection PyShadowingBuiltins
@@ -21,6 +25,7 @@ class Record:
         self.type = type
         self.data = data
         self._result = Result(self.domain, initial_type=self.type)
+        self.context = {}
 
     @property
     def result(self):

@@ -10,6 +10,10 @@ class Providers:
     _mapping: Dict[str, Callable[[], List[IPvXRange]]] = {}
 
     @staticmethod
+    def all() -> List[str]:
+        return [*Providers._mapping.keys()]
+
+    @staticmethod
     def fetch(provider: str) -> List[IPvXRange]:
         return Providers._mapping[provider]()
 

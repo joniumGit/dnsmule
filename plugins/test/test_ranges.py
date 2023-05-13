@@ -54,7 +54,7 @@ def test_rule_fetching_failure_cancels_tasks():
 @pytest.mark.skipif(os.getenv('FETCH_RANGES', 'false') != 'true', reason='Range fetch disabled')
 class TestRangesFetching:
 
-    @pytest.fixture(params=[*Providers._mapping.keys()])
+    @pytest.fixture(params=Providers.all())
     def provider(self, request):
         yield request.param
 

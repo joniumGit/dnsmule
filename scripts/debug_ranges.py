@@ -1,29 +1,18 @@
-from dnsmule_plugins.ipranges.ranges import *
+from dnsmule_plugins.ipranges.providers import Providers
 
 
 def debug_ip_ranges():
-    services = [
-        *(
-            fetch_google_ip_ranges()
-        ),
-        *(
-            fetch_amazon_ip_ranges()
-        ),
-        *(
-            fetch_microsoft_ip_ranges()
-        ),
-    ]
-
     import json
     import dataclasses
 
     with open('service-debug.json', 'w') as f:
         json.dump(
             {
-                'services': [
-                    dataclasses.asdict(s)
-                    for s in services
+                provider: [
+                    dataclasses.asdict(iprange)
+                    for iprange in Providers.fetch(provider)
                 ]
+                for provider in Providers._mapping
             },
             f,
             default=str,

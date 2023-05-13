@@ -5,7 +5,7 @@ from time import sleep
 import pytest
 
 from dnsmule import Record, RRType
-from dnsmule_plugins.ipranges.ranges import IPvXRange
+from dnsmule_plugins.ipranges.iprange import IPvXRange
 from dnsmule_plugins.ipranges.rule import IpRangeChecker
 
 
@@ -39,7 +39,7 @@ def test_task_if_task_exists():
 
 
 def test_unknown_provider():
-    with pytest.raises(AttributeError):
+    with pytest.raises(Exception):
         IpRangeChecker(providers=['adwadawdawdawdwad'])
 
 
@@ -78,8 +78,8 @@ def test_provider_empty_provider_fetch_ok():
 def test_fetcher_for_provider(monkeypatch):
     sentinel = object()
     with monkeypatch.context() as m:
-        from dnsmule_plugins.ipranges import ranges
-        m.setattr(ranges, 'fetch_mock_ip_ranges', lambda: sentinel, raising=False)
+        from dnsmule_plugins.ipranges.providers import Providers
+        m.setitem(Providers._mapping, 'mock', lambda: sentinel)
         checker = IpRangeChecker(providers=['mock'])
         checker.fetch_provider('mock')
         assert checker._provider_ranges['mock'] is sentinel, 'Failed to get provider from package or failed to call'

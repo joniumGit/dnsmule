@@ -6,16 +6,18 @@ from typing import List, Optional, Dict, cast
 from dnsmule.definitions import Record, Result
 from dnsmule.logger import get_logger
 from dnsmule.rules import Rule
-from . import ranges
+from .iprange import IPvXRange
+from .providers import Providers
 
 
 class IpRangeChecker(Rule):
     id = 'ip.ranges'
 
     providers: List[str]
+    interval_hours: int = 10
 
     _last_fetch: Optional[datetime.datetime] = None
-    _provider_ranges: Dict[str, List[ranges.IPvXRange]]
+    _provider_ranges: Dict[str, List[IPvXRange]]
     _task: asyncio.Task
 
     def __init__(self, **kwargs):
@@ -23,17 +25,13 @@ class IpRangeChecker(Rule):
         super().__init__(**kwargs)
         self.globals = {}
         self.providers = [*{*self.providers}] if hasattr(self, 'providers') else []
-        self._provider_ranges = cast(Dict[str, List[ranges.IPvXRange]], {})
+        self._provider_ranges = cast(Dict[str, List[IPvXRange]], {})
         for provider in self.providers:
-            # If this fails it will throw
-            self._get_fetcher(provider)
-
-    @staticmethod
-    def _get_fetcher(provider: str):
-        return getattr(ranges, f'fetch_{provider}_ip_ranges')
+            if not Providers.available(provider):
+                raise KeyError(f'Provider {provider} does not exist')
 
     def fetch_provider(self, provider: str):
-        self._provider_ranges[provider] = self._get_fetcher(provider)()
+        self._provider_ranges[provider] = Providers.fetch(provider)
 
     def fetch_ranges(self):
         with ThreadPoolExecutor() as tp:
@@ -47,7 +45,10 @@ class IpRangeChecker(Rule):
                         get_logger().error('Failed to fetch ranges', exc_info=t.exception())
 
     def check_fetch(self):
-        if not self._last_fetch or abs(datetime.datetime.now() - self._last_fetch) > datetime.timedelta(hours=1):
+        if (
+                not self._last_fetch
+                or abs(datetime.datetime.now() - self._last_fetch) > datetime.timedelta(hours=self.interval_hours)
+        ):
             self.fetch_ranges()
             self._last_fetch = datetime.datetime.now()
 

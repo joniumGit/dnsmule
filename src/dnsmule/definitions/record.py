@@ -7,7 +7,7 @@ from .rrtype import RRType
 from .tag import Tag
 
 
-@dataclass(init=False, eq=True)
+@dataclass(init=False)
 class Record:
     domain: Domain
     type: RRType
@@ -44,6 +44,12 @@ class Record:
 
     def __hash__(self):
         return hash((self.domain, self.type))
+
+    def __eq__(self, other):
+        return (
+                isinstance(other, Record)
+                and (self.domain, self.type, self.data) == (other.domain, other.type, other.data)
+        )
 
 
 __all__ = [

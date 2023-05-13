@@ -91,8 +91,8 @@ class DNSPythonBackend(Backend):
             try:
                 response = self._querier(query, self.resolver, timeout=self.timeout)
                 yield response
-            except DNSException:
-                get_logger().error('%s\n%s', 'Failed query', query)
+            except DNSException as e:
+                get_logger().error('%s\n%s', 'Failed query', query, exc_info=e)
 
     def _query(self, target: Domain, *types: RRType) -> Iterable[Record]:
         for message in self._dns_query(target, *types):

@@ -15,6 +15,7 @@ class RedisStorage(PrefixedKeyValueStorage):
         import redis
         driver_args = self._kwargs
         driver_args['decode_responses'] = True
+        driver_args.pop('prefix', None)
         self._client = redis.Redis(**driver_args)
         self._client.ping()
 

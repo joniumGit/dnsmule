@@ -216,18 +216,18 @@ def result_from_json_data(data: JsonData) -> Result:
 
 
 class PrefixedKeyValueStorage(Storage, ABC):
-    _prefix = 'STORAGE::RESULT::'
+    prefix = 'STORAGE::RESULT::'
 
     def domain_to_key(self, value: Domain) -> str:
-        return f'{self._prefix}{value}'
+        return f'{self.prefix}{value}'
 
     def domain_from_key(self, value: str) -> Domain:
-        return Domain(value.removeprefix(self._prefix))
+        return Domain(value.removeprefix(self.prefix))
 
     def matches_key_prefix(self, value: str) -> bool:
         """Checks if this value matches the key prefix
         """
-        return value.startswith(self._prefix)
+        return value.startswith(self.prefix)
 
     @abstractmethod
     def _set(self, key: str, value: JsonData) -> None:

@@ -13,6 +13,25 @@ class DataBackend(Backend):
             www.example.com IN  A    127.0.0.1,
             www.example.com IN  TXT  hello world,
         ]
+
+    The data is represented in json as follows::
+
+        {
+            "www.example.com" : [
+                {
+                    "name": "www.example.com",
+                    "type": "CNAME",
+                    "data": "example.com"
+                },
+                {
+                    "name": "example.com",
+                    "type": "A",
+                    "data": "127.0.0.1"
+                }
+            ]
+        }
+
+    The json is passed to the backend as kwargs.
     """
     type = 'data'
 
@@ -26,9 +45,9 @@ class DataBackend(Backend):
     def scan(self, domain: Domain, *types: RRType) -> Iterable[Record]:
         types = {*types}
         for record in self.config.get(domain, []):
-            if RRType.from_any(record['type']) in types:
+            if (type := RRType.from_any(record['type'])) in types:
                 yield Record(
-                    Domain(record['domain']),
-                    RRType.from_any(record['type']),
+                    Domain(record['name']),
+                    type,
                     record['data'],
                 )

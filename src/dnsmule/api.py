@@ -135,7 +135,8 @@ class Backend:
 class _Init(Protocol):
 
     def __enter__(self):
-        return self
+        """Resource allocation
+        """
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """No-op

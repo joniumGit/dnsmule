@@ -63,9 +63,8 @@ def test_mule_scan_loads_and_updates_existing_result(mule, domain, record):
         data={},
     )
 
-    def assertion(provided_record, scan_result):
+    def assertion(_, scan_result):
         assert scan_result is existing_result
-        assert provided_record.result is scan_result
         scan_result.tags.add('test')
 
     mule.rules = Rules()

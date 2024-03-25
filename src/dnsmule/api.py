@@ -52,19 +52,16 @@ class Record:
     name: Domain
     type: RRType
     data: Union[bytes, str, Any]
-    result: Optional[Result]
 
     def __init__(
             self,
             name: Domain,
             type: RRType,
             data: Any,
-            result: Optional[Result] = None,
     ):
         self.name = name
         self.type = type
         self.data = data
-        self.result = result
 
     @property
     def text(self) -> str:
@@ -212,7 +209,11 @@ class Rules:
 
     @property
     def records(self):
-        return {*self.normal.keys()}
+        records = {*self.normal.keys()}
+        # TODO: Document and test
+        if RRType.ANY in records:
+            records.remove(RRType.ANY)
+        return records
 
     def register(self, record: int, rule: Rule = None):
         if rule is None:
@@ -235,50 +236,6 @@ class Rules:
         else:
             self.after.append(rule)
             return rule
-
-
-class _Scanner:
-
-    def __init__(
-            self,
-            storage: Storage,
-            backend: Backend,
-    ):
-        self._storage = storage
-        self._backend = backend
-
-        self.store_records = False
-        self.records = []
-
-    def __enter__(self):
-        self._cache = {}
-        self._stack = ExitStack()
-        self._stack.__enter__()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        res = self._stack.__exit__(exc_type, exc_val, exc_tb)
-        del self._cache
-        self.records.clear()
-        return res
-
-    def use_result(self, domain: Domain):
-        if domain in self._cache:
-            return self._cache[domain]
-        else:
-            result = self._storage.fetch(domain)
-            if result is None:
-                result = Result(name=domain)
-            self._stack.callback(self._storage.store, result)
-            self._cache[domain] = result
-            return result
-
-    def scan(self, domain: Domain, *records: RRType):
-        for record in self._backend.scan(domain, *records):
-            record.result = self.use_result(record.name)
-            yield record
-            if self.store_records:
-                self.records.append(record)
 
 
 class DNSMule:
@@ -306,11 +263,6 @@ class DNSMule:
     def __exit__(self, exc_type, exc_val, exc_tb):
         return self._stack.__exit__(exc_type, exc_val, exc_tb)
 
-    def _initialize(self, scanner: _Scanner, domain: Domain):
-        if self.rules.after:
-            scanner.store_records = True
-        return scanner.use_result(domain)
-
     def _run_rules(self, record: Record, result: Result):
         ruleset = self.rules.normal
         if record.type in ruleset:
@@ -325,13 +277,31 @@ class DNSMule:
             for rule in self.rules.after:
                 rule(records, result)
 
+    def _scan(self, domain: Domain, result: Result):
+        for record in self.backend.scan(domain, *self.rules.records):
+            result.types.add(record.type)
+            yield record
+
+    def _normal_scan(self, domain: Domain, result: Result):
+        for record in self._scan(domain, result):
+            self._run_rules(record, result)
+
+    def _batched_scan(self, domain: Domain, result: Result):
+        batch = []
+        for record in self._scan(domain, result):
+            self._run_rules(record, result)
+            batch.append(record)
+        self._run_batch_rules(batch, result)
+
     def scan(self, domain: str) -> Result:
         domain = cast(Domain, domain)
         with self.rules:
-            with _Scanner(self.storage, self.backend) as scanner:
-                result = self._initialize(scanner, domain)
-                for record in scanner.scan(domain, *self.rules.records):
-                    result.types.add(record.type)
-                    self._run_rules(record, result)
-                self._run_batch_rules(scanner.records, result)
-                return result
+            result = self.storage.fetch(domain)
+            if result is None:
+                result = Result(name=domain)
+            if self.rules.after:
+                self._batched_scan(domain, result)
+            else:
+                self._normal_scan(domain, result)
+            self.storage.store(result)
+            return result

@@ -15,24 +15,25 @@ def test_no_code():
 
 def test_without_process_or_init():
     r = DynamicRule(code='a = 10')
-    r.__enter__()
-    assert r._globals['a'] == 10, 'Globals not updated on init'
+    with r:
+        assert r._globals['a'] == 10, 'Globals not updated on init'
 
 
 def test_without_process_returns_none(generate_record):
     r = DynamicRule(code='a = 1')
-    r.__enter__()
-    assert r(generate_record()) is None, 'Calling rule produces a result without process'
+    with r:
+        assert r(generate_record()) is None, 'Calling rule produces a result without process'
 
 
 def test_available_names():
-    DynamicRule(
-        code='a = int("10");'
-             ' import math;'
-             ' b = RRType.TXT;'
-             ' c = Record(name=Domain("a"), data="b", type=RRType.A);'
-             ' e = Result(types=[RRType.AAAA], name=None);'
-    ).__enter__()
+    with DynamicRule(
+            code='a = int("10");'
+                 ' import math;'
+                 ' b = RRType.TXT;'
+                 ' c = Record(name=Domain("a"), data="b", type=RRType.A);'
+                 ' e = Result(types=[RRType.AAAA], name=None);'
+    ):
+        pass
 
 
 def test_globals_persist(generate_record):
@@ -47,9 +48,9 @@ def test_globals_persist(generate_record):
              '    assert a == 10\n'
              '    a = 20\n'
     )
-    r.__enter__()
-    r(generate_record())
-    assert r._globals['a'] == 20, 'Globals did not persist'
+    with r:
+        r(generate_record())
+        assert r._globals['a'] == 20, 'Globals did not persist'
 
 
 def test_config_available():
@@ -60,6 +61,6 @@ def test_config_available():
         },
         code='pass',
     )
-    r.__enter__()
-    assert 'Config' in r._globals, 'Failed to have Config global'
-    assert r._globals['Config'].my_config_values is not None, 'Failed to contain Config namespace'
+    with r:
+        assert 'Config' in r._globals, 'Failed to have Config global'
+        assert r._globals['Config'].my_config_values is not None, 'Failed to contain Config namespace'

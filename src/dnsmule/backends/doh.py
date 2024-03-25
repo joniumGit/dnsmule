@@ -59,7 +59,7 @@ class DoHBackend(Backend):
                 'name': domain,
                 'type': int(type),
             })
-            self._client.request('GET', f'{self._url}?{params}')
+            self._client.request('GET', f'{self.url}?{params}')
             response = self._client.getresponse()
             try:
                 data = load(response)

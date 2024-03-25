@@ -10,7 +10,7 @@ class MongoStorage(Storage):
     database: str
     collection: str
 
-    _connection_kwargs: dict
+    config: dict
 
     def __init__(
             self,
@@ -22,11 +22,11 @@ class MongoStorage(Storage):
         super().__init__()
         self.database = database
         self.collection = collection
-        self._connection_kwargs = config
+        self.config = config
 
     def __enter__(self):
         import pymongo
-        self._client = pymongo.MongoClient(**self._connection_kwargs)
+        self._client = pymongo.MongoClient(**self.config)
         self._collection.create_index(
             [('domain', pymongo.DESCENDING)],
             name='idx_domain_u',

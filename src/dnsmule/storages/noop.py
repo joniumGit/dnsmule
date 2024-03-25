@@ -9,6 +9,8 @@ class NoOpStorage(Storage):
     type = 'noop'
 
     def fetch(self, domain: Domain) -> Optional[Result]:
+        """always returns none
+        """
         return None
 
     def store(self, result: Result) -> None:

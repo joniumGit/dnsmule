@@ -315,9 +315,9 @@ class DNSMule:
         if record.type in ruleset:
             for rule in ruleset[record.type]:
                 rule(record, result)
-            if RRType.ANY in ruleset:
-                for rule in ruleset[RRType.ANY]:
-                    rule(record, result)
+        if RRType.ANY in ruleset:
+            for rule in ruleset[RRType.ANY]:
+                rule(record, result)
 
     def _run_batch_rules(self, records: List[Record], result: Result):
         if records:
@@ -330,8 +330,7 @@ class DNSMule:
             with _Scanner(self.storage, self.backend) as scanner:
                 result = self._initialize(scanner, domain)
                 for record in scanner.scan(domain, *self.rules.records):
-                    if record.type not in result.types:
-                        result.types.add(record.type)
+                    result.types.add(record.type)
                     self._run_rules(record, result)
                 self._run_batch_rules(scanner.records, result)
                 return result

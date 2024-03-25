@@ -1,24 +1,10 @@
 import random
 import string
-from typing import Callable, Any
+from typing import Callable
 
 import pytest
 
 from dnsmule import Domain, RRType, Result, Record
-
-
-class MockClosable:
-    closed: bool = False
-
-    def inherit(self, o: Any):
-        self.__dict__.update({
-            **o.__dict__,
-            'close': self.close,
-            'closed': self.closed,
-        })
-
-    def close(self):
-        self.closed = True
 
 
 class MockLogger:
@@ -74,8 +60,3 @@ def generate_result(generate_record) -> Callable[[], Result]:
         )
 
     yield generate
-
-
-@pytest.fixture
-def mock_closable():
-    yield MockClosable()

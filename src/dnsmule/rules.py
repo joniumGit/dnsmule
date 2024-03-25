@@ -86,7 +86,6 @@ class TimestampRule:
 
     - last_scan <timestamp>
     - scans     <array of timestamps>
-    - seen      <array of timestamps>
     """
     type = 'dns.timestamp'
 
@@ -95,27 +94,16 @@ class TimestampRule:
         self._seen = {*()}
         return self
 
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         del self._seen
         del self._stamp
 
-    def _stamp_seen(self, result: Result):
+    def __call__(self, record: Record, result: Result):
         domain = result.name
         if domain not in self._seen:
             self._seen.add(domain)
-            extend_list(result.data, 'seen', self._stamp)
-
-    def _stamp_scanned(self, result: Result):
-        domain = result.name
-        if domain not in self._seen:
-            self._seen.add(domain)
-            extend_list(result.data, 'seen', self._stamp)
             extend_list(result.data, 'scans', self._stamp)
             result.data['last_scan'] = self._stamp
-
-    def __call__(self, record: Record, result: Result):
-        self._stamp_scanned(result)
-        self._stamp_seen(record.result)
 
 
 class ContainsRule:

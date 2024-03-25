@@ -1,0 +1,4 @@
+id,domain,record,data
+1,www.example.com.,CNAME,example.com
+2,example.com,A,127.0.0.1
+3,example.com,MX,127.0.0.1

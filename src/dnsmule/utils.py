@@ -102,7 +102,7 @@ def left_merge(a: Dict[str, Any], b: Dict[str, Any]):
             a[k] += b[k]
 
 
-def extend_set(data: Dict[str, Any], key: str, values: Iterable[Any]):
+def extend_set(data: Dict[str, Any], key: str, *values: Any):
     """
     Appends values to a list based set in a dictionary
 
@@ -117,6 +117,16 @@ def extend_set(data: Dict[str, Any], key: str, values: Iterable[Any]):
         if v not in target:
             target.append(v)
     data[key] = target
+
+
+def extend_list(data: Dict[str, Any], key: str, *values: Any):
+    """
+    Appends values to a list in a dictionary
+    """
+    if key in data:
+        data[key] = [*data[key], *values]
+    else:
+        data[key] = [*values]
 
 
 def jsonize(value):
@@ -144,6 +154,7 @@ __all__ = [
     'load_data',
     'left_merge',
     'extend_set',
+    'extend_list',
     'join_values',
     'jsonize',
 ]

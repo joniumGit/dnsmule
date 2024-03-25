@@ -27,7 +27,7 @@ def alias_catcher(record: Record):
     for example A records, which can lead to seemingly "missing" data as it gets attributed to a different domain
     if a CNAME exists for the queried domain.
     """
-    extend_set(record.result.data, 'aliases', [record.text])
+    extend_set(record.result.data, 'aliases', record.text)
 
 
 @mule.rules.add.TXT
@@ -44,7 +44,7 @@ def text_analyzer(record: Record):
         'secret',
         'key',
     ]):
-        extend_set(record.result.data, 'records', [text_record])
+        extend_set(record.result.data, 'records', text_record)
         record.tag('INTERESTING')
 
 

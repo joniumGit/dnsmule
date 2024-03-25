@@ -4,20 +4,7 @@ from types import SimpleNamespace
 from typing import TypedDict, List, Union
 
 from .api import Record, Result, RRType, Domain
-
-
-def _add_to_set(key: str, result: Result, value: str):
-    if key in result.data:
-        result.data[key] = {*result.data[key], value}
-    else:
-        result.data[key] = {value}
-
-
-def _add_to_list(key: str, result: Result, value: str):
-    if key in result.data:
-        result.data[key] = [*result.data[key], value]
-    else:
-        result.data[key] = [value]
+from .utils import extend_set, extend_list
 
 
 class MismatchRule:
@@ -26,7 +13,7 @@ class MismatchRule:
     def __call__(self, record: Record, result: Result):
         if record.name != result.name:
             result.tags.add('DNS::MISMATCH')
-            _add_to_set('aliases', result, record.name)
+            extend_set(result.data, 'aliases', record.name)
 
 
 class RegexRule:
@@ -72,14 +59,14 @@ class TimestampRule:
         domain = result.name
         if domain not in self._seen:
             self._seen.add(domain)
-            _add_to_list('seen', result, self._stamp)
+            extend_list(result.data, 'seen', self._stamp)
 
     def _stamp_scanned(self, result: Result):
         domain = result.name
         if domain not in self._seen:
             self._seen.add(domain)
-            _add_to_list('seen', result, self._stamp)
-            _add_to_list('scans', result, self._stamp)
+            extend_list(result.data, 'seen', self._stamp)
+            extend_list(result.data, 'scans', self._stamp)
             result.data['last_scan'] = self._stamp
 
     def __call__(self, record: Record, result: Result):

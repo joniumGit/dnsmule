@@ -2,7 +2,7 @@ import pathlib
 
 import pytest
 
-from dnsmule.utils import load_data, left_merge, extend_set, join_values, jsonize
+from dnsmule.utils import load_data, left_merge, extend_set, join_values, jsonize, extend_list
 
 
 def test_join_keys():
@@ -84,32 +84,32 @@ def test_left_merge_incompatible_types():
 
 def test_extend_set_order():
     store = {'key': ['a', 'b', 'c']}
-    extend_set(store, 'key', ['a', 'd', 'e'])
+    extend_set(store, 'key', 'a', 'd', 'e')
     assert store['key'] == ['a', 'b', 'c', 'd', 'e'], 'Failed to add data in correct order'
 
 
 def test_extend_set_no_value():
     store = {}
-    extend_set(store, 'key', ['a', 'b', 'c'])
+    extend_set(store, 'key', 'a', 'b', 'c')
     assert store['key'] == ['a', 'b', 'c'], 'Failed to create key'
 
 
 def test_extend_set_no_change_old():
     target = ['a', 'b', 'c']
     store = {'key': ['a', 'b', 'c']}
-    extend_set(store, 'key', ['g', 'g', 'g'])
+    extend_set(store, 'key', 'g', 'g', 'g')
     assert target == ['a', 'b', 'c'], 'Failed to persist old'
 
 
 def test_extend_set_de_duplicates_existing():
     store = {'key': ['a', 'a', 'a']}
-    extend_set(store, 'key', [])
+    extend_set(store, 'key')
     assert store['key'] == ['a'], 'Failed to de-duplicate'
 
 
 def test_extend_set_de_duplicates_new():
     store = {'key': ['a', 'a', 'a']}
-    extend_set(store, 'key', ['a', 'a', 'a'])
+    extend_set(store, 'key', 'a', 'a', 'a')
     assert store['key'] == ['a'], 'Failed to de-duplicate'
 
 
@@ -183,3 +183,15 @@ def test_jsonize_set_becomes_list(values):
 ])
 def test_jsonize_recurses_into_structures(value, expected):
     assert jsonize(value) == expected
+
+
+def test_extend_list_adds_when_present():
+    data = {'a': ['a']}
+    extend_list(data, 'a', 'b')
+    assert data['a'] == ['a', 'b'], 'Failed to add value'
+
+
+def test_extend_list_adds_when_not_present():
+    data = {}
+    extend_list(data, 'a', 'b')
+    assert data['a'] == ['b'], 'Failed to add value'

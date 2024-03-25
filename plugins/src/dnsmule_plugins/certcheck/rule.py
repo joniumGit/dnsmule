@@ -39,7 +39,7 @@ class CertChecker(Rule):
         }
         if certs:
             load_result(record.result)
-            extend_set(record.result.data, 'resolvedCertificates', certs)
+            extend_set(record.result.data, 'resolvedCertificates', *certs)
             save_result(record.result)
             if self.callback:
                 domains = [*process_domains(

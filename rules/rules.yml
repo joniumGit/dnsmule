@@ -132,7 +132,7 @@ rules:
         
         
         def process(record: Record):
-            extend_set(record.result.data, 'resolvedAliases', [record.text])
+            extend_set(record.result.data, 'resolvedAliases', record.text)
             for o in Config.identities:
                 key = o['value']
                 if key in record.text:

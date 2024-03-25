@@ -49,7 +49,7 @@ class PTRScan(Rule):
                             _id = ptr.partition(pattern)[2]
                         record.tag(Tag(f'IP::PTR::{self.name.upper()}::{_id.strip(".").upper()}'))
                         break
-            extend_set(record.result.data, 'resolvedPointers', ptrs)
+            extend_set(record.result.data, 'resolvedPointers', *ptrs)
         return record.result
 
 

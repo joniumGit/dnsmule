@@ -1,13 +1,7 @@
-from dnsmule import Record, Result, MismatchRule, Domain, RRType
+from dnsmule import Result, MismatchRule, Domain, RRType
 
 
-def test_mismatch_adds_tags_and_data_to_scan_result():
-    record = Record(
-        name=Domain('example.com'),
-        type=RRType.A,
-        data='',
-    )
-
+def test_mismatch_adds_tags_and_data_to_scan_result(record):
     result = Result(
         name=Domain('alternative.com'),
         types=[RRType.TXT],
@@ -21,19 +15,7 @@ def test_mismatch_adds_tags_and_data_to_scan_result():
     assert result.data['aliases'] == ['example.com']
 
 
-def test_mismatch_does_nothing_on_same_domain():
-    record = Record(
-        name=Domain('example.com'),
-        type=RRType.A,
-        data='',
-    )
-
-    result = Result(
-        name=Domain('example.com'),
-        types=[RRType.TXT],
-        tags=[],
-    )
-
+def test_mismatch_does_nothing_on_same_domain(record, result):
     rule = MismatchRule()
     rule(record, result)
 

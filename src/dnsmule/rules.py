@@ -70,7 +70,7 @@ class RegexRule:
 
     def __call__(self, record: Record, result: Result):
         for pattern in self.patterns:
-            if m := pattern['regex'].fullmatch(record.text):
+            if m := pattern['regex'].search(record.text):
                 if label := pattern.get('label', None):
                     tag = f'DNS::REGEX::{self.name}::{label}'
                 else:

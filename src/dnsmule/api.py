@@ -185,15 +185,19 @@ The result of the current scan is given as the second parameter.
 class Rules:
     normal: Dict[int, List[Rule]]
     batch: List[BatchRule]
+    any: List[Rule]
 
     def __init__(self):
         self.normal = {}
         self.batch = []
+        self.any = []
 
     def _gen_all_rules(self):
         for group in self.normal.values():
             yield from group
         for rule in self.batch:
+            yield rule
+        for rule in self.any:
             yield rule
 
     def __enter__(self):
@@ -209,11 +213,7 @@ class Rules:
 
     @property
     def records(self):
-        records = {*self.normal.keys()}
-        # TODO: Document and test
-        if RRType.ANY in records:
-            records.remove(RRType.ANY)
-        return records
+        return {*self.normal.keys()}
 
     def register(self, record: int, rule: Rule = None):
         if rule is None:
@@ -226,6 +226,10 @@ class Rules:
                 self.normal[record] = []
             self.normal[record].append(rule)
             return rule
+
+    def register_any(self, rule: Rule):
+        self.any.append(rule)
+        return rule
 
     def register_batch(self, rule: BatchRule):
         self.batch.append(rule)
@@ -258,13 +262,10 @@ class DNSMule:
         return self._stack.__exit__(exc_type, exc_val, exc_tb)
 
     def _run_rules(self, record: Record, result: Result):
-        ruleset = self.rules.normal
-        if record.type in ruleset:
-            for rule in ruleset[record.type]:
-                rule(record, result)
-        if RRType.ANY in ruleset:
-            for rule in ruleset[RRType.ANY]:
-                rule(record, result)
+        for rule in self.rules.normal.get(record.type, ()):
+            rule(record, result)
+        for rule in self.rules.any:
+            rule(record, result)
 
     def _run_batch_rules(self, records: List[Record], result: Result):
         if records:

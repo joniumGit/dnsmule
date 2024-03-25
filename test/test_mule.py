@@ -116,7 +116,7 @@ def test_mule_scan_batch_rule_runs(mule, domain, tag):
 
 
 def test_mule_scan_any_record_rule_runs(mule, domain, tag):
-    mule.rules.register(RRType.ANY, rule=lambda _, sr: sr.tags.add('any'))
+    mule.rules.register_any(rule=lambda _, sr: sr.tags.add('any'))
 
     with mule:
         mule.scan(domain)

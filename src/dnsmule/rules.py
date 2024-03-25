@@ -54,16 +54,19 @@ class RegexRule:
     """
     type = 'dns.regex'
 
-    class Pattern(TypedDict):
-        label: str
+    class GroupPattern(TypedDict):
         group: Union[str, int]
+        regex: str
+
+    class LabelPattern(TypedDict):
+        label: str
         regex: str
 
     def __init__(
             self,
             *,
             name: str,
-            patterns: List[Pattern],
+            patterns: List[Union[LabelPattern, GroupPattern]],
     ):
         self.name = name
         self.patterns = [{**p, 'regex': re.compile(p['regex'])} for p in patterns]

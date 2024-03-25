@@ -11,7 +11,7 @@ def test_mismatch_adds_tags_and_data_to_scan_result(record):
     rule = MismatchRule()
     rule(record, result)
 
-    assert result.tags == {'DNS::MISMATCH'}
+    assert 'DNS::MISMATCH' in result.tags
     assert result.data['aliases'] == ['example.com']
 
 

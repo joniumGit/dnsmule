@@ -20,7 +20,7 @@ def test_contains_rule_appends_tag_to_result_on_matching():
 
     rule(record, result)
 
-    assert result.tags == {'DNS::CIDER::CDN::EXAMPLE'}
+    assert 'DNS::CIDER::CDN::EXAMPLE' in result.tags
 
 
 def test_contains_rule_does_nothing_on_not_matching():

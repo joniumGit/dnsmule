@@ -184,16 +184,16 @@ The result of the current scan is given as the second parameter.
 
 class Rules:
     normal: Dict[int, List[Rule]]
-    after: List[BatchRule]
+    batch: List[BatchRule]
 
     def __init__(self):
         self.normal = {}
-        self.after = []
+        self.batch = []
 
     def _gen_all_rules(self):
         for group in self.normal.values():
             yield from group
-        for rule in self.after:
+        for rule in self.batch:
             yield rule
 
     def __enter__(self):
@@ -228,14 +228,8 @@ class Rules:
             return rule
 
     def register_batch(self, rule: BatchRule):
-        if rule is None:
-            def decorator(value):
-                return self.register_batch(value)
-
-            return decorator
-        else:
-            self.after.append(rule)
-            return rule
+        self.batch.append(rule)
+        return rule
 
 
 class DNSMule:
@@ -274,7 +268,7 @@ class DNSMule:
 
     def _run_batch_rules(self, records: List[Record], result: Result):
         if records:
-            for rule in self.rules.after:
+            for rule in self.rules.batch:
                 rule(records, result)
 
     def _scan(self, domain: Domain, result: Result):
@@ -299,7 +293,7 @@ class DNSMule:
             result = self.storage.fetch(domain)
             if result is None:
                 result = Result(name=domain)
-            if self.rules.after:
+            if self.rules.batch:
                 self._batched_scan(domain, result)
             else:
                 self._normal_scan(domain, result)

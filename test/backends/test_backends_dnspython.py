@@ -5,19 +5,20 @@ from dns.rdatatype import RdataType
 
 from dnsmule import Backend, RRType, Domain
 from dnsmule.backends import dnspython
+from dnsmule.backends.dnspython import DNSPythonBackend, message_to_record, DNSPythonRecord, default_query
 
 
 @pytest.fixture(autouse=True)
 def auto_fail_on_query(monkeypatch):
     with monkeypatch.context() as m:
-        for key in dnspython.DNSPythonBackend._SUPPORTED_QUERY_TYPES:
+        for key in DNSPythonBackend._SUPPORTED_QUERY_TYPES:
             m.setattr(
                 dnspython,
                 key if key != 'default' else 'udp_with_fallback',
                 lambda *_, **__: pytest.fail('Called Disallowed Method'),
             )
             m.setitem(
-                dnspython.DNSPythonBackend._SUPPORTED_QUERY_TYPES,
+                DNSPythonBackend._SUPPORTED_QUERY_TYPES,
                 key,
                 lambda *_, **__: pytest.fail('Called Disallowed Method'),
             )
@@ -25,7 +26,7 @@ def auto_fail_on_query(monkeypatch):
 
 
 @pytest.fixture
-def default_query(monkeypatch):
+def mock_query(monkeypatch):
     class DefaultQuery:
         sentinel = object()
         fallback = False
@@ -40,7 +41,7 @@ def default_query(monkeypatch):
             udp_with_fallback_mock,
         )
         m.setitem(
-            dnspython.DNSPythonBackend._SUPPORTED_QUERY_TYPES,
+            DNSPythonBackend._SUPPORTED_QUERY_TYPES,
             'default',
             udp_with_fallback_mock,
         )
@@ -49,16 +50,16 @@ def default_query(monkeypatch):
 
 
 @pytest.mark.parametrize('fallback', [True, False])
-def test_default_query_returns_single_value(default_query, fallback):
-    default_query.fallback = fallback
-    result = dnspython.default_query(make_query('example.com', RdataType.A))
-    assert result is default_query.sentinel, 'Did not return sentinel value'
+def test_default_query_returns_single_value(mock_query, fallback):
+    mock_query.fallback = fallback
+    result = default_query(make_query('example.com', RdataType.A))
+    assert result is mock_query.sentinel, 'Did not return sentinel value'
 
 
-def test_default_query_logs_fallback(default_query, logger):
+def test_default_query_logs_fallback(mock_query, logger):
     logger.mock_in_module(dnspython)
-    default_query.fallback = True
-    dnspython.default_query(make_query('example.com', RdataType.TXT))
+    mock_query.fallback = True
+    default_query(make_query('example.com', RdataType.TXT))
     assert logger.result == ['debug'], 'Did not correctly call logger on fallback'
 
 
@@ -71,7 +72,7 @@ def test_default_query_logs_fallback(default_query, logger):
     'default',
 ])
 def test_supported_queriers(querier):
-    backend = dnspython.DNSPythonBackend(querier=querier)
+    backend = DNSPythonBackend(querier=querier)
     assert backend._querier is not None, 'Failed to set querier'
     assert callable(backend._querier), 'Querier not callable'
     assert backend.querier == querier, 'Querier not set correctly'
@@ -79,18 +80,23 @@ def test_supported_queriers(querier):
 
 def test_not_supported_querier_raises():
     with pytest.raises(ValueError):
-        dnspython.DNSPythonBackend(querier=object())
+        DNSPythonBackend(querier=object())
 
 
-def test_backend_defaults():
-    backend = dnspython.DNSPythonBackend()
+def test_backend_querier_defaults_to_default():
+    backend = DNSPythonBackend()
     assert backend.querier == 'default', 'Failed to set default querier'
     assert backend._querier is not None, 'Failed to set default querier'
 
 
 def test_resolver_defaults_to_something():
-    backend = dnspython.DNSPythonBackend()
+    backend = DNSPythonBackend()
     assert backend.resolver is not None, 'Failed to set resolver'
+
+
+def test_resolver_is_accepted_as_kwarg():
+    backend = DNSPythonBackend(resolver='33.33.33.33')
+    assert backend.resolver == '33.33.33.33', 'Failed to set resolver from kwargs'
 
 
 def test_resolver_defaults_to_system(monkeypatch):
@@ -99,11 +105,11 @@ def test_resolver_defaults_to_system(monkeypatch):
     resolver = resolve.Resolver()
     default = resolver.nameservers[0]
 
-    backend = dnspython.DNSPythonBackend()
+    backend = DNSPythonBackend()
     assert backend.resolver == default, 'Failed to set resolver to system default'
 
 
-def test_message_to_record_empty_yields_nothing():
+def test_message_to_record_empty_result_yields_nothing():
     response = from_text(
         'id 54307'
         '\nopcode QUERY'
@@ -116,12 +122,12 @@ def test_message_to_record_empty_yields_nothing():
         '\n;ADDITIONAL'
     )
     with pytest.raises(StopIteration):
-        next(iter(dnspython.message_to_record(
+        next(iter(message_to_record(
             response,
         )))
 
 
-def test_message_to_record_error_is_ok():
+def test_message_to_record_error_response_is_handled_gracefully():
     response = from_text(
         'id 54307'
         '\nopcode QUERY'
@@ -134,12 +140,12 @@ def test_message_to_record_error_is_ok():
         '\n;ADDITIONAL'
     )
     with pytest.raises(StopIteration):
-        next(iter(dnspython.message_to_record(
+        next(iter(message_to_record(
             response,
         )))
 
 
-def test_message_to_record_correct_class():
+def test_message_to_record_returns_expected_class():
     response = from_text(
         'id 54307'
         '\nopcode QUERY'
@@ -152,13 +158,13 @@ def test_message_to_record_correct_class():
         '\n;AUTHORITY'
         '\n;ADDITIONAL'
     )
-    record = next(iter(dnspython.message_to_record(
+    record = next(iter(message_to_record(
         response,
     )))
-    assert isinstance(record, dnspython.DNSPythonRecord)
+    assert isinstance(record, DNSPythonRecord)
 
 
-def test_message_to_record_multiple():
+def test_message_to_record_handles_multiple_answers():
     response = from_text(
         'id 54307'
         '\nopcode QUERY'
@@ -172,7 +178,7 @@ def test_message_to_record_multiple():
         '\n;AUTHORITY'
         '\n;ADDITIONAL'
     )
-    record_iterator = iter(dnspython.message_to_record(
+    record_iterator = iter(message_to_record(
         response,
     ))
     next(record_iterator)
@@ -181,7 +187,7 @@ def test_message_to_record_multiple():
         next(record_iterator)
 
 
-def test_message_to_record_multiple_from_additional():
+def test_message_to_record_handles_additional_answers():
     response = from_text(
         'id 54307'
         '\nopcode QUERY'
@@ -195,7 +201,7 @@ def test_message_to_record_multiple_from_additional():
         '\n;ADDITIONAL'
         '\nexample.com. 2563 IN A 127.0.0.2'
     )
-    record_iterator = iter(dnspython.message_to_record(
+    record_iterator = iter(message_to_record(
         response,
     ))
     next(record_iterator)
@@ -204,7 +210,7 @@ def test_message_to_record_multiple_from_additional():
         next(record_iterator)
 
 
-def test_message_to_record_correct_type():
+def test_message_to_record_takes_type_from_response():
     response = from_text(
         'id 54307'
         '\nopcode QUERY'
@@ -217,13 +223,13 @@ def test_message_to_record_correct_type():
         '\n;AUTHORITY'
         '\n;ADDITIONAL'
     )
-    record = next(iter(dnspython.message_to_record(
+    record = next(iter(message_to_record(
         response,
     )))
     assert record.type == RRType.TXT
 
 
-def test_message_to_record_correct_domain():
+def test_message_to_record_takes_domain_from_response():
     response = from_text(
         'id 54307'
         '\nopcode QUERY'
@@ -236,13 +242,13 @@ def test_message_to_record_correct_domain():
         '\n;AUTHORITY'
         '\n;ADDITIONAL'
     )
-    record = next(iter(dnspython.message_to_record(
+    record = next(iter(message_to_record(
         response,
     )))
     assert record.name == 'a.example.com'
 
 
-def test_dnspython_record_text():
+def test_dnspython_record_text_property_returns_resource_record_content():
     response = from_text(
         'id 54307'
         '\nopcode QUERY'
@@ -255,13 +261,13 @@ def test_dnspython_record_text():
         '\n;AUTHORITY'
         '\n;ADDITIONAL'
     )
-    record = next(iter(dnspython.message_to_record(
+    record = next(iter(message_to_record(
         response,
     )))
     assert record.text == 'sentinel'
 
 
-def test_dnspython_record_text_ip():
+def test_dnspython_record_has_valid_text_representation():
     response = from_text(
         'id 54307'
         '\nopcode QUERY'
@@ -274,13 +280,13 @@ def test_dnspython_record_text_ip():
         '\n;AUTHORITY'
         '\n;ADDITIONAL'
     )
-    record = next(iter(dnspython.message_to_record(
+    record = next(iter(message_to_record(
         response,
     )))
     assert record.text == '127.0.0.1'
 
 
-def test_dnspython_record_attrs():
+def test_dnspython_implementation_record_attributes_are_accessible():
     response = from_text(
         'id 54307'
         '\nopcode QUERY'
@@ -293,14 +299,14 @@ def test_dnspython_record_attrs():
         '\n;AUTHORITY'
         '\n;ADDITIONAL'
     )
-    record = next(iter(dnspython.message_to_record(
+    record = next(iter(message_to_record(
         response,
     )))
     # Has dnspython attributes
-    assert record.text == '127.0.0.1'
+    assert record.to_text() == '127.0.0.1'
 
 
-def test_dnspython_dns_query():
+def test_dnspython_dns_query_produces_a_record():
     response = from_text(
         'id 54307'
         '\nopcode QUERY'
@@ -313,7 +319,7 @@ def test_dnspython_dns_query():
         '\n;AUTHORITY'
         '\n;ADDITIONAL'
     )
-    backend = dnspython.DNSPythonBackend()
+    backend = DNSPythonBackend()
     backend._querier = lambda *_, **__: response
     record = next(iter(backend.scan(
         Domain('example.com'),
@@ -322,7 +328,7 @@ def test_dnspython_dns_query():
     assert record is not None, 'Failed to produce response'
 
 
-def test_dnspython_dns_query_empty_response():
+def test_dnspython_dns_query_empty_response_produces_no_records():
     response = from_text(
         'id 54307'
         '\nopcode QUERY'
@@ -334,7 +340,7 @@ def test_dnspython_dns_query_empty_response():
         '\n;AUTHORITY'
         '\n;ADDITIONAL'
     )
-    backend = dnspython.DNSPythonBackend()
+    backend = DNSPythonBackend()
     backend._querier = lambda *_, **__: response
     with pytest.raises(StopIteration):
         next(iter(backend.scan(
@@ -343,8 +349,8 @@ def test_dnspython_dns_query_empty_response():
         )))
 
 
-def test_dnspython_dns_query_empty_types():
-    backend = dnspython.DNSPythonBackend()
+def test_dnspython_dns_query_empty_record_types_yields_no_results():
+    backend = DNSPythonBackend()
     backend._querier = lambda *_, **__: None
     with pytest.raises(StopIteration):
         next(iter(backend.scan(
@@ -352,13 +358,13 @@ def test_dnspython_dns_query_empty_types():
         )))
 
 
-def test_dnspython_dns_query_timeout(logger):
+def test_dnspython_dns_query_error_handling_to_log(logger):
     logger.mock_in_module(dnspython)
 
     def timeout(*_, **__):
         raise DNSException()
 
-    backend = dnspython.DNSPythonBackend()
+    backend = DNSPythonBackend()
     backend._querier = timeout
     with pytest.raises(StopIteration):
         next(iter(backend.scan(
@@ -369,4 +375,4 @@ def test_dnspython_dns_query_timeout(logger):
 
 
 def test_backend_is_backend():
-    assert issubclass(dnspython.DNSPythonBackend, Backend), 'Did not inherit from backend'
+    assert issubclass(DNSPythonBackend, Backend), 'Did not inherit from backend'

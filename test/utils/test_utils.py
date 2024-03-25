@@ -2,12 +2,7 @@ import pathlib
 
 import pytest
 
-from dnsmule.utils import load_data, left_merge, extend_set, join_values, empty
-
-
-def test_empty_raises():
-    with pytest.raises(StopIteration):
-        next(empty())
+from dnsmule.utils import load_data, left_merge, extend_set, join_values
 
 
 def test_join_keys():

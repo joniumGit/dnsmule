@@ -1,7 +1,14 @@
-from .backends import Backend
-from .definitions import Result, Record, Domain, RRType, Tag
-from .mule import DNSMule
-from .plugins import Plugin, Plugins
-from .rules import Rules, DynamicRule, RegexRule, Rule
+from .api import (
+    Domain,
+    RRType,
+    Record,
+    Result,
+    Storage,
+    Backend,
+    Rules,
+    DNSMule,
+)
 
-__version__ = '0.5.0'
+from .backends import *
+from .rules import *
+from .storages import *

@@ -1,18 +1,14 @@
 from typing import Iterable
 
-from .abstract import Backend
-from ..definitions import Domain, Record, RRType
-from ..utils import empty
+from ..api import Backend, Record, Domain, RRType
 
 
-class NOOPBackend(Backend):
+class NoOpBackend(Backend):
+    """
+    Does nothing
+    """
+    type = 'noop'
 
-    def _query(self, target: Domain, *types: RRType) -> Iterable[Record]:
-        """No-op
-        """
-        yield from empty()
-
-
-__all__ = [
-    'NOOPBackend',
-]
+    def scan(self, domain: Domain, *types: RRType) -> Iterable[Record]:
+        for _ in []:
+            yield

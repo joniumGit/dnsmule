@@ -1,16 +1,9 @@
 from pathlib import Path
-from typing import Union, Iterator, TypeVar, Any, Dict, Tuple, Iterable
+from typing import Union, TypeVar, Any, Dict, Tuple, Iterable
 
 K = TypeVar('K')
 V = TypeVar('V')
 R = TypeVar('R')
-T = TypeVar('T')
-
-
-def empty() -> Iterator[Any]:
-    """An empty iterable
-    """
-    return iter([])
 
 
 def join_values(a: Dict[K, V], b: Dict[K, R]) -> Iterable[Tuple[V, R]]:
@@ -130,6 +123,5 @@ __all__ = [
     'load_data',
     'left_merge',
     'extend_set',
-    'empty',
     'join_values',
 ]

@@ -1,14 +1,4 @@
-from .abstract import Storage, Query
-from .dictstorage import DictStorage
-from .mongodbstorage import MongoStorage
-from .redisstorage import RedisJSONStorage
-from .redisstorage import RedisStorage
-
-__all__ = [
-    'Storage',
-    'Query',
-    'DictStorage',
-    'MongoStorage',
-    'RedisStorage',
-    'RedisJSONStorage',
-]
+from .db_mongo import MongoStorage
+from .db_redis import RedisStorage, RedisJSONStorage
+from .dictionary import DictStorage
+from .noop import NoOpStorage

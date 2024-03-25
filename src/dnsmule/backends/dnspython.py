@@ -1,5 +1,4 @@
-from os import getenv
-from random import choice
+from logging import getLogger
 from typing import Dict, Any, Callable, Coroutine, Iterable
 
 from dns.exception import DNSException
@@ -7,19 +6,16 @@ from dns.message import Message, make_query
 from dns.query import udp_with_fallback, https, quic, udp, tcp, tls
 from dns.rdata import Rdata
 from dns.rdatatype import RdataType
+from dns.resolver import Resolver
 from dns.rrset import RRset
 
-from .abstract import Backend
-from ..definitions import Record, RRType, Domain
-from ..logger import get_logger
-
-Querier = Callable[..., Coroutine[Any, Any, Message]]
+from ..api import Backend, Record, Domain, RRType
 
 
 def default_query(query: Message, *args, **kwargs):
     response, used_tcp = udp_with_fallback(query, *args, **kwargs)
     if used_tcp:
-        get_logger().debug('Used TCP fallback query\n%s', query)
+        getLogger('dnsmule.dns').debug('Used TCP fallback query\n%s', query)
     return response
 
 
@@ -32,7 +28,7 @@ def message_to_record(message: Message) -> Iterable[Record]:
             rtype = RRType.from_any(record_data.rdtype)
             yield DNSPythonRecord(
                 type=rtype,
-                domain=Domain(result_set.name.to_text(omit_final_dot=True)),
+                name=Domain(result_set.name.to_text(omit_final_dot=True)),
                 data=record_data,
             )
 
@@ -48,7 +44,24 @@ class DNSPythonRecord(Record):
         return getattr(self.data, item)
 
 
+Querier = Callable[..., Coroutine[Any, Any, Message]]
+
+
 class DNSPythonBackend(Backend):
+    """
+    DNSPython backend for querying DNS records
+
+    Can be configured with::
+
+        timeout     <int>   Timeout for queries
+        querier     <str>   Querier to use (see DNSPython docs for all query types)
+                            This is a `dns.query` attribute.
+                            Default: tcp with udp fallback
+        resolver    <str>   Resolver address to use for DNS queries
+                            Default: System default from `Resolver().nameservers[0]`
+    """
+    type = 'dnspython'
+
     _SUPPORTED_QUERY_TYPES: Dict[str, Querier] = {
         'tcp': tcp,
         'udp': udp,
@@ -58,28 +71,27 @@ class DNSPythonBackend(Backend):
         'default': default_query,
     }
 
-    _DEFAULT_RESOLVER = getenv('DNSMULE_DEFAULT_RESOLVER', choice([
-        '208.67.222.222',
-        '208.67.220.220',
-        '1.1.1.1',
-        '1.0.0.1',
-        '8.8.8.8',
-        '8.8.4.4',
-    ]))
-
-    timeout: float = 2
-    querier: str = 'default'
-    resolver: str = _DEFAULT_RESOLVER
-
     _querier: Querier
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(
+            self,
+            *,
+            timeout: float = 2,
+            querier: str = 'default',
+            resolver: str = None,
+    ):
+        super(DNSPythonBackend, self).__init__()
+        self.timeout = timeout
+        self.querier = querier
+        self.resolver = resolver
+        self._logger = getLogger('dnsmule.dns')
         try:
             self._querier = DNSPythonBackend._SUPPORTED_QUERY_TYPES[self.querier]
         except KeyError:
             raise ValueError(f'Invalid query mode ({self.querier})')
-        get_logger().info('DNSPYTHON: Resolver: %s', self.resolver)
+        if not self.resolver:
+            self.resolver = Resolver().nameservers[0]
+        self._logger.info('DNSPYTHON: Resolver: %s', self.resolver)
 
     def _dns_query(
             self,
@@ -92,15 +104,9 @@ class DNSPythonBackend(Backend):
                 response = self._querier(query, self.resolver, timeout=self.timeout)
                 yield response
             except DNSException as e:
-                get_logger().error('%s\n%s', 'Failed query', query, exc_info=e)
+                self._logger.error('%s\n%s', 'Failed query', query, exc_info=e)
 
-    def _query(self, target: Domain, *types: RRType) -> Iterable[Record]:
+    def scan(self, target: Domain, *types: RRType) -> Iterable[Record]:
         for message in self._dns_query(target, *types):
             for record in message_to_record(message):
                 yield record
-
-
-__all__ = [
-    'DNSPythonBackend',
-    'DNSPythonRecord',
-]

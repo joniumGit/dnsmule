@@ -7,12 +7,6 @@ from dnsmule import Backend, RRType, Domain
 from dnsmule.backends import dnspython
 
 
-@pytest.fixture
-def reload():
-    import importlib
-    yield lambda: importlib.reload(dnspython)
-
-
 @pytest.fixture(autouse=True)
 def auto_fail_on_query(monkeypatch):
     with monkeypatch.context() as m:
@@ -99,13 +93,14 @@ def test_resolver_defaults_to_something():
     assert backend.resolver is not None, 'Failed to set resolver'
 
 
-def test_resolver_defaults_to_env(monkeypatch, reload):
-    resolver = '0.0.0.0'
-    with monkeypatch.context() as m:
-        m.setenv('DNSMULE_DEFAULT_RESOLVER', resolver)
-        reload()
-        backend = dnspython.DNSPythonBackend()
-    assert backend.resolver == resolver, 'Failed to set resolver'
+def test_resolver_defaults_to_system(monkeypatch):
+    import dns.resolver as resolve
+
+    resolver = resolve.Resolver()
+    default = resolver.nameservers[0]
+
+    backend = dnspython.DNSPythonBackend()
+    assert backend.resolver == default, 'Failed to set resolver to system default'
 
 
 def test_message_to_record_empty_yields_nothing():
@@ -244,7 +239,7 @@ def test_message_to_record_correct_domain():
     record = next(iter(dnspython.message_to_record(
         response,
     )))
-    assert record.domain == 'a.example.com'
+    assert record.name == 'a.example.com'
 
 
 def test_dnspython_record_text():
@@ -302,7 +297,7 @@ def test_dnspython_record_attrs():
         response,
     )))
     # Has dnspython attributes
-    assert record.to_text() == '127.0.0.1'
+    assert record.text == '127.0.0.1'
 
 
 def test_dnspython_dns_query():
@@ -320,7 +315,7 @@ def test_dnspython_dns_query():
     )
     backend = dnspython.DNSPythonBackend()
     backend._querier = lambda *_, **__: response
-    record = next(iter(backend.single(
+    record = next(iter(backend.scan(
         Domain('example.com'),
         RRType.A,
     )))
@@ -342,7 +337,7 @@ def test_dnspython_dns_query_empty_response():
     backend = dnspython.DNSPythonBackend()
     backend._querier = lambda *_, **__: response
     with pytest.raises(StopIteration):
-        next(iter(backend.single(
+        next(iter(backend.scan(
             Domain('example.com'),
             RRType.A,
         )))
@@ -352,7 +347,7 @@ def test_dnspython_dns_query_empty_types():
     backend = dnspython.DNSPythonBackend()
     backend._querier = lambda *_, **__: None
     with pytest.raises(StopIteration):
-        next(iter(backend.single(
+        next(iter(backend.scan(
             Domain('example.com'),
         )))
 
@@ -366,7 +361,7 @@ def test_dnspython_dns_query_timeout(logger):
     backend = dnspython.DNSPythonBackend()
     backend._querier = timeout
     with pytest.raises(StopIteration):
-        next(iter(backend.single(
+        next(iter(backend.scan(
             Domain('example.com'),
             RRType.A,
         )))

@@ -11,8 +11,9 @@ class TestStoragesMongo(ContainerStorageTestBase):
 
     @pytest.fixture(scope='class')
     def storage(self, storage_params):
-        from dnsmule.storages.mongodbstorage import MongoStorage
-        yield MongoStorage(**storage_params)
+        from dnsmule.storages import MongoStorage
+        with MongoStorage(**storage_params) as instance:
+            yield instance
 
     @pytest.fixture(scope='function', autouse=True)
     def flush(self, storage):
@@ -22,7 +23,3 @@ class TestStoragesMongo(ContainerStorageTestBase):
             storage._client.drop_database(storage.database)
         else:
             yield
-
-    def test_client_property(self, storage, storage_params):
-        r = type(storage)(**storage_params)
-        assert r._collection is not None, 'Failed to have/create a collection'

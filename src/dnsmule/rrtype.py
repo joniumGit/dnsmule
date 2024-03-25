@@ -45,10 +45,10 @@ class RRType(IntEnum):
             return cls.from_text(str(value))
 
     def __str__(self):
-        return RRType.to_text(self)
+        return self.__repr__()
 
     def __repr__(self):
-        return self.__str__()
+        return RRType.to_text(self)
 
     A: int = 1
     """
@@ -367,12 +367,12 @@ class RRType(IntEnum):
 
     SVCB: int = 64
     """
-    General Purpose Service Binding
+    General-purpose service binding
     """
 
     HTTPS: int = 65
     """
-    Service Binding type for use with HTTP
+    SVCB-compatible type for use with HTTP
     """
 
     SPF: int = 99
@@ -488,6 +488,11 @@ class RRType(IntEnum):
     AMTRELAY: int = 260
     """
     Automatic Multicast Tunneling Relay
+    """
+
+    RESINFO: int = 261
+    """
+    Resolver Information as Key/Value Pairs
     """
 
     TA: int = 32768

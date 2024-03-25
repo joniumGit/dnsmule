@@ -21,20 +21,14 @@ class StoragesTestRedisBase(ContainerStorageTestBase, ABC):
         else:
             yield
 
-    def test_size_is_approximate(self, storage, generate_result):
-        assert storage.size() == 0, 'Was not empty'
-        storage.store(generate_result())
-        storage._client.set('a', 1)
-        storage._client.set('b', 2)
-        assert storage.size() != 1, 'Other keys did not show up in len'
-
 
 class TestStoragesRedis(StoragesTestRedisBase):
 
     @pytest.fixture(scope='class')
     def storage(self, storage_params):
         from dnsmule.storages import RedisStorage
-        yield RedisStorage(**storage_params)
+        with RedisStorage(**storage_params) as instance:
+            yield instance
 
 
 class TestStoragesRedisJson(StoragesTestRedisBase):
@@ -42,4 +36,5 @@ class TestStoragesRedisJson(StoragesTestRedisBase):
     @pytest.fixture(scope='class')
     def storage(self, storage_params):
         from dnsmule.storages import RedisJSONStorage
-        yield RedisJSONStorage(**storage_params)
+        with RedisJSONStorage(**storage_params) as instance:
+            yield instance

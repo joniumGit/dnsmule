@@ -1,7 +1,0 @@
-version: '1.0.0'
-rules:
-  - name: regex_test
-    record: 'TXT'
-    type: 'dns.regex'
-    config:
-      pattern: 'a'

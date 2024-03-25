@@ -27,11 +27,11 @@ class MockLogger:
         self.result = []
         self.ctx = ctx
 
-    def get_logger(self):
+    def get_logger(self, _):
         return self
 
     def mock_in_module(self, module):
-        self.ctx.setattr(module, 'get_logger', self.get_logger)
+        self.ctx.setattr(module, 'getLogger', self.get_logger)
 
     def __call__(self, *args, **kwargs):
         return self
@@ -64,7 +64,16 @@ def generate_record() -> Callable[[], Record]:
 
 @pytest.fixture
 def generate_result(generate_record) -> Callable[[], Result]:
-    yield lambda: generate_record().result
+    def generate():
+        record = generate_record()
+        return Result(
+            name=record.name,
+            types={record.type},
+            tags=[],
+            data={},
+        )
+
+    yield generate
 
 
 @pytest.fixture

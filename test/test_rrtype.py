@@ -1,6 +1,6 @@
 import pytest
 
-from dnsmule.definitions import RRType
+from dnsmule import RRType
 
 
 @pytest.mark.parametrize('value,result', [

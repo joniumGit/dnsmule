@@ -8,4 +8,5 @@ class TestDictStorage(StoragesTestBase):
 
     @pytest.fixture
     def storage(self):
-        yield DictStorage()
+        with DictStorage() as instance:
+            yield instance

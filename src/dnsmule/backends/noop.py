@@ -10,5 +10,4 @@ class NoOpBackend(Backend):
     type = 'noop'
 
     def scan(self, domain: Domain, *types: RRType) -> Iterable[Record]:
-        for _ in []:
-            yield
+        yield from []

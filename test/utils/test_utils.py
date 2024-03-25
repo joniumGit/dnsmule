@@ -2,7 +2,7 @@ import pathlib
 
 import pytest
 
-from dnsmule.utils import load_data, left_merge, extend_set, join_values
+from dnsmule.utils import load_data, left_merge, extend_set, join_values, jsonize
 
 
 def test_join_keys():
@@ -111,3 +111,75 @@ def test_extend_set_de_duplicates_new():
     store = {'key': ['a', 'a', 'a']}
     extend_set(store, 'key', ['a', 'a', 'a'])
     assert store['key'] == ['a'], 'Failed to de-duplicate'
+
+
+@pytest.mark.parametrize('values', [
+    {'a', 'b', 'c'},
+    frozenset([1, 2, 3, '4']),
+])
+def test_jsonize_set_becomes_list(values):
+    json_values = jsonize(values)
+    assert isinstance(json_values, list), 'Did not become json compatible'
+    for value in values:
+        assert value in json_values, 'Value not found from json'
+
+
+@pytest.mark.parametrize('value, expected', [
+    [
+        {
+            'a': 'a'
+        },
+        {
+            'a': 'a'
+        },
+    ],
+    [
+        {
+            'a': 'a',
+            'b': {
+                'c': {1}
+            }
+        },
+        {
+            'a': 'a',
+            'b': {
+                'c': [1]
+            }
+        },
+    ],
+    [
+        {
+            'a': [[{'1'}]]
+        },
+        {
+            'a': [[['1']]]
+        },
+    ],
+    [
+        {
+            'a': ({'1'},)
+        },
+        {
+            'a': [['1']]
+        },
+    ],
+    [
+        {
+            'a': {('1',)}
+        },
+        {
+            'a': [['1']]
+        },
+    ],
+    [
+        {
+            'a': ({'b': {'1'}},)
+        },
+        {
+            'a': [{'b': ['1']}]
+        },
+    ],
+
+])
+def test_jsonize_recurses_into_structures(value, expected):
+    assert jsonize(value) == expected

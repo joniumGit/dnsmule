@@ -1,8 +1,8 @@
 from json import loads, dumps
 from typing import Optional
 
-from .utils import jsonize
 from ..api import Storage, Domain, Result, RRType
+from ..utils import jsonize
 
 
 class RedisStorage(Storage):

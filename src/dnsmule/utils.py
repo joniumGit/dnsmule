@@ -119,9 +119,31 @@ def extend_set(data: Dict[str, Any], key: str, values: Iterable[Any]):
     data[key] = target
 
 
+def jsonize(value):
+    """
+    Jsonizes a couple of outliers in the standard collections
+
+    :param value: Anything
+    :return: Something hopefully JSON compatible
+    """
+    if isinstance(value, dict):
+        return {
+            k: jsonize(v)
+            for k, v in value.items()
+        }
+    elif isinstance(value, (list, tuple, set, frozenset)):
+        return [
+            jsonize(item)
+            for item in value
+        ]
+    else:
+        return value
+
+
 __all__ = [
     'load_data',
     'left_merge',
     'extend_set',
     'join_values',
+    'jsonize',
 ]

@@ -45,10 +45,10 @@ class RRType(IntEnum):
             return cls.from_text(str(value))
 
     def __str__(self):
-        return self.__repr__()
+        return RRType.to_text(self)
 
     def __repr__(self):
-        return RRType.to_text(self)
+        return self.__str__()
 
     A: int = 1
     """

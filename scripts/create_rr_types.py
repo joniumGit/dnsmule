@@ -54,7 +54,7 @@ if __name__ == '__main__':
 
     print(records)
 
-    with open(pathlib.Path(__file__).parent.parent / 'src' / 'dnsmule' / 'definitions' / 'rrtype.py', 'w') as f:
+    with open(pathlib.Path(__file__).parent.parent / 'src' / 'dnsmule' / 'rrtype.py', 'w') as f:
         f.write(textwrap.dedent(
             # language=python
             """

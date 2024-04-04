@@ -74,7 +74,7 @@ def load_config(config: dict) -> DNSMule:
             rules,
             *plugins,
             config=config['rules'],
-        )
+        ),
     )
 
 

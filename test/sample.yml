@@ -1,0 +1,33 @@
+storage:
+  type: 'dict'
+  config: { }
+
+backend:
+  type: 'data'
+  config:
+    'example.com':
+      - name: 'example.com'
+        type: 'A'
+        data: '127.0.0.1'
+
+rules:
+  - name: 'Match digits'
+    type: 'regex'
+    record: 'A'
+    config:
+      name: 'TEST'
+      regex: '\d+'
+      label: 'label'
+  - name: 'Add timestamp'
+    type: 'timestamp'
+    record: 'batch'
+  - name: 'Mark as test'
+    type: 'dynamic'
+    record: 'any'
+    config:
+      code: |
+        from dnsmule.utils import extend_set
+        
+        
+        def process(record: Record, result: Result):
+            result.data['test'] = True

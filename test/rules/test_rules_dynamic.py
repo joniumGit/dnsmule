@@ -19,10 +19,13 @@ def test_without_process_or_init():
         assert r._globals['a'] == 10, 'Globals not updated on init'
 
 
-def test_without_process_returns_none(generate_record):
+def test_without_process_returns_none(generate_record, generate_result):
     r = DynamicRule(code='a = 1')
     with r:
-        assert r(generate_record()) is None, 'Calling rule produces a result without process'
+        assert r(
+            generate_record(),
+            generate_result(),
+        ) is None, 'Calling rule produces a result without process'
 
 
 def test_available_names():
@@ -36,20 +39,20 @@ def test_available_names():
         pass
 
 
-def test_globals_persist(generate_record):
+def test_globals_persist(generate_record, generate_result):
     r = DynamicRule(
         code='a = 1\n'
              'def init():\n'
              '    global a\n'
              '    assert a == 1\n'
              '    a = 10\n'
-             'def process(record):\n'
+             'def process(record, result):\n'
              '    global a\n'
              '    assert a == 10\n'
              '    a = 20\n'
     )
     with r:
-        r(generate_record())
+        r(generate_record(), generate_result())
         assert r._globals['a'] == 20, 'Globals did not persist'
 
 

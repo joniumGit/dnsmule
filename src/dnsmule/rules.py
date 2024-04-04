@@ -20,7 +20,7 @@ class MismatchRule:
         DNS::MISMATCH
 
     """
-    type = 'dns.mismatch'
+    type = 'mismatch'
 
     def __call__(self, record: Record, result: Result):
         if record.name != result.name:
@@ -52,7 +52,7 @@ class RegexRule:
         UPPER(DNS::REGEX::$name::$label or group)
 
     """
-    type = 'dns.regex'
+    type = 'regex'
 
     class GroupPattern(TypedDict):
         group: Union[str, int]
@@ -66,9 +66,15 @@ class RegexRule:
             self,
             *,
             name: str,
-            patterns: List[Union[LabelPattern, GroupPattern]],
+            patterns: List[Union[LabelPattern, GroupPattern]] = None,
+            # Compat for single pattern
+            group: Union[str, int] = None,
+            label: str = None,
+            regex: str = None,
     ):
         self.name = name
+        if patterns is None:
+            patterns = [{'label': label, 'regex': regex, 'group': group}]
         self.patterns = [{**p, 'regex': re.compile(p['regex'])} for p in patterns]
 
     def __call__(self, record: Record, result: Result):
@@ -90,7 +96,7 @@ class TimestampRule:
     - last_scan <timestamp>
     - scans     <array of timestamps>
     """
-    type = 'dns.timestamp'
+    type = 'timestamp'
 
     def __enter__(self):
         self._stamp = datetime.now().isoformat()
@@ -119,7 +125,7 @@ class DynamicRule:
 
     **Note**: This is a security risk if you ever let other people create dynamic rules
     """
-    type = 'dns.dynamic'
+    type = 'dynamic'
 
     def __init__(
             self,
@@ -150,9 +156,16 @@ class DynamicRule:
     def __exit__(self, exc_type, exc_val, exc_tb):
         del self._globals
 
-    def __call__(self, record: Record) -> Result:
+    def __call__(self, record: Record, result: Result) -> Result:
         if 'process' in self._globals:
-            return eval('process(record)', self._globals, {'record': record})
+            return eval(
+                'process(record, result)',
+                self._globals,
+                {
+                    'record': record,
+                    'result': result,
+                }
+            )
 
 
 __all__ = [

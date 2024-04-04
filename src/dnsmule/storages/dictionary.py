@@ -4,7 +4,7 @@ from ..api import Storage, Domain, Result
 
 
 class DictStorage(Storage):
-    type = 'dictionary'
+    type = 'dict'
 
     def __init__(self):
         super().__init__()

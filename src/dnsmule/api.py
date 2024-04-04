@@ -200,6 +200,10 @@ class Rules:
         for rule in self.any:
             yield rule
 
+    @property
+    def all(self):
+        return [*self._gen_all_rules()]
+
     def __enter__(self):
         self._stack = ExitStack()
         self._stack.__enter__()
@@ -261,16 +265,37 @@ class DNSMule:
     def __exit__(self, exc_type, exc_val, exc_tb):
         return self._stack.__exit__(exc_type, exc_val, exc_tb)
 
+    @property
+    def context(self):
+        return {
+            'backend': self.backend,
+            'storage': self.storage,
+            'rules': self.rules,
+            'mule': self,
+        }
+
+    def _run_rule(
+            self,
+            rule: Union[Rule, BatchRule],
+            record: Union[Record, List[Record]],
+            result: Result,
+    ):
+        rule.context = self.context
+        try:
+            rule(record, result)
+        finally:
+            del rule.context
+
     def _run_rules(self, record: Record, result: Result):
         for rule in self.rules.normal.get(record.type, ()):
-            rule(record, result)
+            self._run_rule(rule, record, result)
         for rule in self.rules.any:
-            rule(record, result)
+            self._run_rule(rule, record, result)
 
     def _run_batch_rules(self, records: List[Record], result: Result):
         if records:
             for rule in self.rules.batch:
-                rule(records, result)
+                self._run_rule(rule, records, result)
 
     def _scan(self, domain: Domain, result: Result):
         for record in self.backend.scan(domain, *self.rules.records):

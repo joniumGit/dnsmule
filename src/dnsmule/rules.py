@@ -109,51 +109,6 @@ class TimestampRule:
             result.data['last_scan'] = self._stamp
 
 
-class ContainsRule:
-    """
-    Rule for simple contains checks
-
-    Config is provided similarly to the RegexRule.
-    Identities are given as a list in the _identities_ keyword argument.
-    The format for identities is::
-
-        {
-          "patterns:" [
-               {
-                 "name": <name of the matched item>,
-                 "type": <type of the matched item>
-                 "value": <string to match to records>
-               }
-          ]
-        }
-
-    **Tags**::
-
-        UPPER(DNS::CIDER::$type::$name)
-
-    """
-    type = 'dns.contains'
-
-    class Identity(TypedDict):
-        name: str
-        type: str
-        value: str
-
-    def __init__(
-            self,
-            *,
-            identities: List[Identity],
-    ):
-        self.identities = identities
-
-    def __call__(self, record: Record, result: Result):
-        for o in self.identities:
-            key = o['value']
-            if key in record.text:
-                tag = 'DNS::CIDER::%s::%s' % (o['type'], o['name'])
-                result.tags.add(tag.upper())
-
-
 class DynamicRule:
     """
     Dynamic rule that takes Python code as input
@@ -204,6 +159,5 @@ __all__ = [
     'MismatchRule',
     'RegexRule',
     'TimestampRule',
-    'ContainsRule',
     'DynamicRule',
 ]

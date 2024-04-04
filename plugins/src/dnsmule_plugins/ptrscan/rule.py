@@ -1,30 +1,23 @@
 import ipaddress
 
-from dnsmule import DNSMule
-from dnsmule.definitions import Record, RRType, Domain, Tag
-from dnsmule.rules import Rule
+from dnsmule import Record, RRType, Domain, Result
 from dnsmule.utils import extend_set
 
 
-class PTRScan(Rule):
+class PTRScan:
     id = 'ip.ptr'
 
-    _mule: DNSMule
-
-    @staticmethod
-    def creator(mule: DNSMule):
-        def ptr_scan(**kwargs):
-            be = PTRScan(**kwargs)
-            be._mule = mule
-            return be
-
-        return ptr_scan
+    context: dict
 
     @staticmethod
     def reverse_query(ip: str) -> Domain:
         return Domain(ipaddress.ip_address(ip).reverse_pointer)
 
-    def __call__(self, record: Record):
+    @property
+    def mule(self):
+        return self.context['mule']
+
+    def __call__(self, record: Record, result: Result):
         address = record.text
         ptr_patterns = [
             '-'.join(reversed(address.split('.'))),
@@ -34,7 +27,7 @@ class PTRScan(Rule):
         ]
         ptrs = [
             ptr.text
-            for ptr in self._mule.backend.single(
+            for ptr in self.mule.backend.scan(
                 self.reverse_query(record.text),
                 RRType.PTR,
             )
@@ -47,10 +40,12 @@ class PTRScan(Rule):
                             _id = ptr.removeprefix(pattern)
                         else:
                             _id = ptr.partition(pattern)[2]
-                        record.tag(Tag(f'IP::PTR::{self.name.upper()}::{_id.strip(".").upper()}'))
+                        result.tags.add(
+                            f'IP::PTR'
+                            f'::{_id.strip(".").upper()}'
+                        )
                         break
-            extend_set(record.result.data, 'resolvedPointers', *ptrs)
-        return record.result
+            extend_set(result.data, 'resolvedPointers', *ptrs)
 
 
 __all__ = [

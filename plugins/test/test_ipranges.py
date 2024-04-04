@@ -4,12 +4,11 @@ from time import sleep
 
 import pytest
 
-from dnsmule import Record, RRType
 from dnsmule_plugins.ipranges.iprange import IPvXRange
 from dnsmule_plugins.ipranges.rule import IpRangeChecker
 
 
-def test_task():
+def test_fetching_add_last_fetch():
     checker = IpRangeChecker(providers=[])
 
     assert checker._last_fetch is None, 'Spawned with fetch time'
@@ -21,11 +20,10 @@ def test_task():
 
     checker.check_fetch()
 
-    assert not hasattr(checker, '_task'), 'Task did not get deleted'
     assert checker._last_fetch is not None, 'Missing fetch time'
 
 
-def test_task_if_task_exists():
+def test_context_should_fetch_on_enter():
     checker = IpRangeChecker(providers=[])
     called = []
 
@@ -34,8 +32,26 @@ def test_task_if_task_exists():
 
     checker.fetch_ranges = fetch_ranges
 
-    checker.check_fetch()
+    with checker:
+        pass
+
     assert called == ['fetch'], 'Not fetched'
+
+
+def test_context_should_not_fetch_on_enter_if_recently_fetched():
+    checker = IpRangeChecker(providers=[])
+    called = []
+
+    def fetch_ranges():
+        called.append('fetch')
+
+    checker.fetch_ranges = fetch_ranges
+    checker._last_fetch = datetime.datetime.now()
+
+    with checker:
+        pass
+
+    assert called == [], 'Fetched twice'
 
 
 def test_unknown_provider():
@@ -43,34 +59,32 @@ def test_unknown_provider():
         IpRangeChecker(providers=['adwadawdawdawdwad'])
 
 
-def test_provider_tags():
-    rule = IpRangeChecker(providers=[], name='test_rule')
+def test_provider_tags(record, result):
+    rule = IpRangeChecker(providers=[])
     rule._provider_ranges['test_provider'] = [IPvXRange(
         address=IPv4Network('127.0.0.0/31'),
         region='test_region',
         service='test_service',
     )]
-    r = Record('', RRType.A, '127.0.0.1')
     rule._last_fetch = datetime.datetime.now()
-    rule(r)
-    assert 'IP::RANGES::TEST_RULE::TEST_SERVICE::TEST_REGION' in r.result
+    rule(record, result)
+    assert 'IP::RANGES::TEST_SERVICE::TEST_REGION' in result.tags
 
 
-def test_provider_no_tags_if_no_match():
-    rule = IpRangeChecker(providers=[], name='test_rule')
+def test_provider_no_tags_if_no_match(record, result):
+    rule = IpRangeChecker(providers=[])
     rule._provider_ranges['test_provider'] = [IPvXRange(
         address=IPv4Network('128.0.0.0/24'),
         region='test_region',
         service='test_service',
     )]
-    r = Record('', RRType.A, '127.0.0.1')
     rule._last_fetch = datetime.datetime.now()
-    rule(r)
-    assert len(r.result.tags) == 0, 'Had a tag'
+    rule(record, result)
+    assert len(result.tags) == 0, 'Had a tag'
 
 
 def test_provider_empty_provider_fetch_ok():
-    rule = IpRangeChecker(providers=[], name='test_rule')
+    rule = IpRangeChecker(providers=[])
     rule.check_fetch()
     assert rule._last_fetch is not None, 'Failed fetch'
 

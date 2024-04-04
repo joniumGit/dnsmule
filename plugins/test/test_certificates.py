@@ -165,13 +165,16 @@ def test_import_error_2(monkeypatch):
 
     class FailLogger:
 
+        def __init__(self, *_):
+            pass
+
         @staticmethod
         def warning(*o):
             pytest.fail(repr(o))
 
     with monkeypatch.context() as m:
         m.setattr(ssl, 'get_server_certificate', thrower)
-        m.setattr(certificates, 'get_logger', FailLogger)
+        m.setattr(certificates, 'getLogger', FailLogger)
         cert = certificates.collect_certificate_cryptography(EXAMPLE_ADDRESS, 1.)
     assert cert is None, 'Failed to pass on exception'
 

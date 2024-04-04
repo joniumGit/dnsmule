@@ -1,48 +1,61 @@
-import asyncio
 import datetime
 from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
+from logging import getLogger
 from typing import List, Optional, Dict, cast
 
-from dnsmule.definitions import Record, Result
-from dnsmule.logger import get_logger
-from dnsmule.rules import Rule
+from dnsmule import Record, Result
 from .iprange import IPvXRange
 from .providers import Providers
 
+LOGGER = 'dnsmule.plugins.ipranges'
 
-class IpRangeChecker(Rule):
+
+class IpRangeChecker:
     id = 'ip.ranges'
 
-    providers: List[str]
-    interval_hours: int = 10
-
-    _last_fetch: Optional[datetime.datetime] = None
     _provider_ranges: Dict[str, List[IPvXRange]]
-    _task: asyncio.Task
+    _last_fetch: Optional[datetime.datetime] = None
 
-    def __init__(self, **kwargs):
-        kwargs['code'] = 'pass'
-        super().__init__(**kwargs)
-        self.globals = {}
-        self.providers = [*{*self.providers}] if hasattr(self, 'providers') else Providers.all()
-        self._provider_ranges = cast(Dict[str, List[IPvXRange]], {})
-        for provider in self.providers:
+    def __init__(
+            self,
+            *,
+            providers: Optional[List[str]] = None,
+            interval_hours: int = 10,
+    ):
+        if providers is not None:
+            providers = [*{*providers}]
+        else:
+            providers = Providers.all()
+        for provider in providers:
             if not Providers.available(provider):
                 raise KeyError(f'Provider {provider} does not exist')
+        self.providers = providers
+        self.interval_hours = interval_hours
+        self._provider_ranges = cast(Dict[str, List[IPvXRange]], {})
+
+    def __enter__(self):
+        self._executor = ThreadPoolExecutor()
+        self._executor.__enter__()
+        self.check_fetch()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._executor.__exit__(exc_type, exc_val, exc_tb)
 
     def fetch_provider(self, provider: str):
         self._provider_ranges[provider] = Providers.fetch(provider)
 
     def fetch_ranges(self):
-        with ThreadPoolExecutor() as tp:
-            tasks = []
-            for k in self.providers:
-                tasks.append(tp.submit(self.fetch_provider, k))
-            if tasks:
-                wait(tasks, return_when=ALL_COMPLETED)
-                for t in tasks:
-                    if t.done() and t.exception() is not None:
-                        get_logger().error('Failed to fetch ranges', exc_info=t.exception())
+        tasks = []
+        for k in self.providers:
+            tasks.append(self._executor.submit(self.fetch_provider, k))
+        if tasks:
+            wait(tasks, return_when=ALL_COMPLETED)
+            for t in tasks:
+                if t.done() and t.exception() is not None:
+                    getLogger(LOGGER).error(
+                        'Failed to fetch ranges',
+                        exc_info=t.exception(),
+                    )
 
     def check_fetch(self):
         if (
@@ -52,19 +65,17 @@ class IpRangeChecker(Rule):
             self.fetch_ranges()
             self._last_fetch = datetime.datetime.now()
 
-    def __call__(self, record: Record) -> Result:
+    def __call__(self, record: Record, result: Result):
         self.check_fetch()
         address: str = record.text
         for provider, p_ranges in self._provider_ranges.items():
             for p_range in p_ranges:
                 if address in p_range:
-                    record.result.tags.add(
+                    result.tags.add(
                         f'IP::RANGES'
-                        f'::{self.name.upper()}'
                         f'::{p_range.service.upper()}'
                         f'::{p_range.region.upper()}'
                     )
-        return record.result
 
 
 __all__ = [

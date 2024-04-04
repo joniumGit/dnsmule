@@ -15,26 +15,26 @@ test_cert = Certificate(
 
 
 def test_saving():
-    result = Result(Domain('example.com'), RRType.TXT)
+    result = Result(Domain('example.com'), [RRType.TXT])
     result.data['resolvedCertificates'] = {test_cert}
     result = save_result(result)
     assert result.data['resolvedCertificates'] == [test_cert.to_json()]
 
 
 def test_loading():
-    result = Result(Domain('example.com'), RRType.TXT)
+    result = Result(Domain('example.com'), [RRType.TXT])
     result.data['resolvedCertificates'] = [test_cert.to_json()]
     result = load_result(result)
     assert result.data['resolvedCertificates'] == {test_cert}
 
 
 def test_saving_no_key():
-    result = Result(Domain('example.com'), RRType.TXT)
+    result = Result(Domain('example.com'), [RRType.TXT])
     result = save_result(result)
     assert 'resolvedCertificates' not in result.data, 'Added key when not present'
 
 
 def test_loading_no_key():
-    result = Result(Domain('example.com'), RRType.TXT)
+    result = Result(Domain('example.com'), [RRType.TXT])
     result = load_result(result)
     assert 'resolvedCertificates' not in result.data, 'Added key when not present'

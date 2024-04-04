@@ -8,8 +8,16 @@ A single rule is implemented to print out all CNAME records in the file.
 from pathlib import Path
 from typing import Iterable
 
-from dnsmule import DNSMule, Record, Domain, RRType
-from dnsmule.backends.abstract import Backend
+from dnsmule import (
+    DNSMule,
+    Record,
+    Domain,
+    RRType,
+    Backend,
+    DictStorage,
+    Rules,
+    Result,
+)
 
 
 class FileBackend(Backend):
@@ -17,24 +25,39 @@ class FileBackend(Backend):
     """
     file: str
 
-    def _query(self, _: Domain, *types: RRType) -> Iterable[Record]:
+    def __init__(
+            self,
+            *,
+            file: Path,
+    ):
+        self.file = file
+
+    def scan(self, _: Domain, *types: RRType) -> Iterable[Record]:
         _types = {*types}
         with open(self.file, 'r') as f:
             for line in f:
                 _type, _domain, _value = line.split(',')
                 _type = RRType.from_any(_type)
                 if _type in _types:
-                    yield Record(domain=Domain(_domain), type=_type, data=_value)
+                    yield Record(
+                        name=Domain(_domain),
+                        type=_type,
+                        data=_value,
+                    )
 
 
-mule = DNSMule.make(backend=FileBackend(file=Path(__file__).parent / 'example.domains'))
+mule = DNSMule(
+    backend=FileBackend(file=Path(__file__).parent / 'example.domains'),
+    storage=DictStorage(),
+    rules=Rules(),
+)
 
 
-@mule.rules.add.CNAME
-def aliases(record: Record):
+@mule.rules.register('CNAME')
+def aliases(record: Record, _: Result):
     """Prints out all CNAME records found from the example file
     """
-    print('FOUND A CNAME: ', record.domain, '>>', record.text)
+    print('FOUND A CNAME: ', record.name, '>>', record.text)
 
 
 if __name__ == '__main__':

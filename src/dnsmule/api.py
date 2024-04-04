@@ -219,7 +219,8 @@ class Rules:
     def records(self):
         return {*self.normal.keys()}
 
-    def register(self, record: int, rule: Rule = None):
+    def register(self, record: Union[str, int, RRType], rule: Rule = None):
+        record = RRType.from_any(record)
         if rule is None:
             def decorator(value):
                 return self.register(record, value)

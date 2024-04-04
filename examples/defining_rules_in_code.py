@@ -6,20 +6,27 @@ It is important to remember to register the Backend implementation as it will de
 The NOOPBackend is usually only useful when testing custom rules or loading rules.
 """
 
-from dnsmule import DNSMule, Record
-from dnsmule.backends.dnspython import DNSPythonBackend
-from dnsmule.storages.abstract import result_to_json_data
-from dnsmule.storages.dictstorage import DictStorage
-from dnsmule.utils import extend_set
+from dnsmule import DNSMule, Record, Rules, DNSPythonBackend, DictStorage, Result
+from dnsmule.utils import extend_set, jsonize
 
-mule = DNSMule.make(
+mule = DNSMule(
     storage=DictStorage(),
     backend=DNSPythonBackend(),
+    rules=Rules()
 )
 
 
-@mule.rules.add.CNAME
-def alias_catcher(record: Record):
+def to_json(result: Result):
+    return {
+        'name': result.name,
+        'types': [*result.types],
+        'tags': [*result.tags],
+        'data': jsonize(result.data),
+    }
+
+
+@mule.rules.register('CNAME')
+def alias_catcher(record: Record, result: Result):
     """
     Adds any CNAME records for a domain into the result
 
@@ -27,11 +34,11 @@ def alias_catcher(record: Record):
     for example A records, which can lead to seemingly "missing" data as it gets attributed to a different domain
     if a CNAME exists for the queried domain.
     """
-    extend_set(record.result.data, 'aliases', record.text)
+    extend_set(result.data, 'aliases', record.text)
 
 
-@mule.rules.add.TXT
-def text_analyzer(record: Record):
+@mule.rules.register('TXT')
+def text_analyzer(record: Record, result: Result):
     """Scans TXT records and matches a predefined list of interesting values
     """
     text_record = record.text
@@ -44,17 +51,18 @@ def text_analyzer(record: Record):
         'secret',
         'key',
     ]):
-        extend_set(record.result.data, 'records', text_record)
-        record.tag('INTERESTING')
+        extend_set(result.data, 'records', text_record)
+        result.tags.add('INTERESTING')
 
 
 def analyze(*domains):
     """Analyzes a set of domains and returns the results in a json compatible dict
     """
     mule.scan(*domains)
+    storage: DictStorage = mule.storage
     return {
-        k: result_to_json_data(v)
-        for k, v in mule.storage.items()
+        k: to_json(v)
+        for k, v in storage._dict.items()
     }
 
 
@@ -66,7 +74,7 @@ if __name__ == '__main__':
     parser.add_argument('domains', nargs='+', type=str, help='list of domains to scan')
     arguments = parser.parse_args()
 
-    print('Rules:  ', *mule.rules)
+    print('Rules:  ', *mule.rules.all)
     print('Results:', json.dumps(
         analyze(*arguments.domains),
         ensure_ascii=False,

@@ -22,11 +22,4 @@ def debug_ip_ranges():
 
 
 if __name__ == '__main__':
-    import logging
-
-    from dnsmule.logger import get_logger
-
-    get_logger().setLevel(logging.DEBUG)
-    get_logger().addHandler(logging.StreamHandler())
-
     debug_ip_ranges()

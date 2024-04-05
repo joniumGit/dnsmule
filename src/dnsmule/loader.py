@@ -16,6 +16,8 @@ def load_by_type(*sources: object, type: str) -> type:
                 candidate = getattr(source, value)
                 if getattr(candidate, 'type', None) == type:
                     return candidate
+                if getattr(candidate, '__name__', None) == type:
+                    return candidate
     raise ValueError(f"id {type} not found")
 
 

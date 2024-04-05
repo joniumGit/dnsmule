@@ -1,79 +1,75 @@
 version: '0.6.0'
 storage:
-  name: RedisJSONStorage
-  fallback: true
-  config:
-    host: redis
-    port: 6379
+  type: dict
 backend:
-  name: dnspython.DNSPythonBackend
+  type: dnspython
   config:
     timeout: 2
 plugins:
-  - name: dnsmule_plugins.CertCheckPlugin
-    config:
-      callback: true
-  - name: dnsmule_plugins.IPRangesPlugin
-  - name: dnsmule_plugins.PTRScanPlugin
+  - dnsmule_plugins
 rules:
-  - name: o365
-    type: dns.regex
+  - name: Microsoft Patterns
+    type: regex
     record: txt
     config:
-      pattern: '^MS=ms'
-      identification: MICROSOFT::O365
-  - name: ses
-    type: dns.regex
-    record: txt
-    config:
-      pattern: '^amazonses:'
-      identification: AMAZON::SES
-  - name: azure
-    type: dns.regex
-    record: txt
-    config:
-      pattern: '^.*\.azurewebsites\.'
-      identification: MICROSOFT::AZURE
-  - name: generic_verification
-    type: dns.regex
-    record: txt
-    config:
+      name: MICROSOFT
       patterns:
-        - '^(.+)(?:-(?:site|domain))?-verification='
-        - '^(.+)(?:site|domain)verification'
-        - '^(.+)_verify_'
-        - '^(\w+)-code:'
+        - regex: '^MS=ms'
+          label: O365
+        - regex: '^.*\.azurewebsites\.'
+          identification: AZURE
+  - name: Amazon Patterns
+    type: regex
+    record: txt
+    config:
+      name: AMAZON
+      regex: '^amazonses:'
+      label: SES
+  - name: Generic Verification Records
+    type: regex
+    record: txt
+    config:
+      name: VERIFICATION
+      patterns:
+        - regex: '^(.+)(?:-(?:site|domain))?-verification='
+          group: 1
+        - regex: '^(.+)(?:site|domain)verification'
+          group: 1
+        - regex: '^(.+)_verify_'
+          group: 1
+        - regex: '^(\w+)-code:'
+          group: 1
       group: 1
-  - name: ptrscan
+  - name: PTR Scaner
     type: ip.ptr
     record: A
     description:
       Scans PTR records for cloud providers.
-  - name: certcheck
+  - name: Certificate Fetcher
     type: ip.certs
     record: A
     description:
       Checks certificates for more domains to scan and tags issuers.
       Also, records all certificates to result data.
-    config:
-      callback: false
-  - name: ipranges
+  - name: IP-Range Scanner
     type: ip.ranges
     record: A
     description:
       Checks common cloud provider ipranges for matches.
+    config:
+      cache: true
   - name: textlog
     description: Logs possibly interesting TXT records
-    type: dns.dynamic
+    type: dynamic
     record: txt
     config:
       separators:
         - '='
         - ':'
       code: |
-        from dnsmule.logger import get_logger
+        from logging import getLogger
         
-        logger = get_logger()
+        logger = getLogger('dnsmule.rules.textlog')
         seen = set()
         
         
@@ -84,18 +80,18 @@ rules:
                     return start
         
         
-        def process(record: Record) -> None:
+        def process(record: Record, _: Result) -> None:
             key = partition_unique(record.text)
             if key and key not in seen:
                 seen.add(key)
-                logger.info('TEXTLOG: Found key %r from %r', key, record.domain)
-  - name: cider
-    type: dns.dynamic
+                logger.info('Found key %r from %r', key, record.name)
+  - name: CNAME Identifier
+    type: dynamic
     record: cname
+    description: |
+      Creates tags with the DNS::CIDER::TYPE::PROVIDER::SERVICE format.
+      Also, appends CNAMEs to resolvedAliases in order to later map possible alias results back to correct domains.
     config:
-      description: |
-        Creates tags with the DNS::CIDER::TYPE::PROVIDER::SERVICE format.
-        Also, appends CNAMEs to resolvedAliases in order to later map possible alias results back to correct domains.
       identities:
         - name: AKAMAI::EDGEKEY
           type: CDN
@@ -131,12 +127,12 @@ rules:
         from dnsmule.utils import extend_set
         
         
-        def process(record: Record):
-            extend_set(record.result.data, 'resolvedAliases', record.text)
+        def process(record: Record, result: Result):
+            extend_set(result.data, 'resolvedAliases', record.text)
             for o in Config.identities:
                 key = o['value']
                 if key in record.text:
-                    record.tag('DNS::CIDER::%s::%s' % (
+                    result.tags.add('DNS::CIDER::%s::%s' % (
                         o['type'].upper(),
                         o['name'].upper(),
                     ))

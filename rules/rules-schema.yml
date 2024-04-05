@@ -1,15 +1,6 @@
 type: object
 title: DNSMule rule definition
-description: |+2
-  This file is used to define rules and configuration for DNSMule
-
-  The general rule resolution flow goes as follows:
-  - Create rules from definition file
-  - Invoke dynamic rule initialization
-  - Gather data
-  - Run data through the rules
-required:
-  - version
+description: This file is used to define rules and configuration for DNSMule
 properties:
   version:
     type: string
@@ -17,25 +8,22 @@ properties:
   storage:
     type: object
     required:
-      - name
+      - type
     properties:
-      name:
+      type:
         type: string
-        pattern: '^(?:\w+\.)*\w+$'
-      fallback:
-        type: boolean
-        default: false
+        pattern: '^(?:\w+\.)*?\w+$'
       config:
         type: object
         additionalProperties: true
   backend:
     type: object
     required:
-      - name
+      - type
     properties:
-      name:
+      type:
         type: string
-        pattern: '^(?:\w+\.)*\w+$'
+        pattern: '^(?:\w+\.)*?\w+$'
       config:
         type: object
         additionalProperties: true
@@ -43,16 +31,7 @@ properties:
     type: array
     uniqueItems: true
     items:
-      type: object
-      required:
-        - name
-      properties:
-        name:
-          type: string
-          pattern: '^(?:\w+\.)*\w+$'
-        config:
-          type: object
-          additionalProperties: true
+      type: string
   rules:
     type: array
     uniqueItems: true
@@ -64,9 +43,6 @@ definitions:
     type: object
     additionalProperties: false
     title: DNSMule rule
-    description:
-      Any additional properties are passed to the respective rule type factory to produce the rule instance.
-      See the concrete subtypes for parameters.
     required:
       - name
       - type
@@ -80,7 +56,7 @@ definitions:
           Allows deletion and easy identification of the rule.
       type:
         type: string
-        pattern: ^\w+(?:\.\w++)$
+        pattern: ^\w+(?:\.\w+)?$
         title: DNSMule module for rule creation
       record:
         type: string
@@ -89,11 +65,6 @@ definitions:
         description:
           See the full IANA list of record types
           https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml
-      priority:
-        type: integer
-        minimum: 0
-        default: 0
-        title: Rule priority
       description:
         type: string
         title: Optional rule description
@@ -102,86 +73,61 @@ definitions:
         title: Rule configuration
         additionalProperties: true
         anyOf:
-          - $ref: "#/definitions/dns.regex"
-          - $ref: "#/definitions/dns.dynamic"
+          - $ref: "#/definitions/regex"
+          - $ref: "#/definitions/dynamic"
           - type: object
             additionalProperties: true
-  dns.regex.base:
-    title: Matches DNS records with regex
+  regex-pattern:
+    title: Regex rule pattern
     type: object
-    additionalProperties: true
+    additionalProperties: false
     required:
-      - pattern
+      - regex
     properties:
-      flags:
-        type: array
-        default:
-          - UNICODE
-        items:
-          type: string
-          title: Python RegExp flags
-      attribute:
+      regex:
         type: string
-        default: to_text
-        title: DNS Record attribute to use for regex match
-        description: |
-          This can be used to used an alternative attribute for regex match instead of to_text.
-          Alternatives can be checked from dnspython docs for response record types.
+        title: Python style regex for specifying the match
+        description:
+          The regex can contain one capture group for capturing the identification property.
+          In this case the group property has to be specified. Otherwise identification is used.
+        x-intellij-language-injection: PythonRegExp
     oneOf:
       - type: object
         properties:
-          pattern:
+          label:
             type: string
-            title: Python style regex for specifying the match
+            pattern: ^[\w:]+$
+            title: Service identification tag
             description:
-              The regex can contain one capture group for capturing the identification property.
-              In this case the group property has to be specified. Otherwise identification is used.
-            x-intellij-language-injection: PythonRegExp
+              This will be appended to the end as DNS::REGEX::name.upper()::identification.upper()
       - type: object
         properties:
-          patterns:
-            type: array
-            items:
-              type: string
-              title: Python style regular expressions for specifying the match
-              description:
-                The regex can contain one capture group for capturing the identification property.
-                In this case the group property has to be specified. Otherwise identification is used.
-              x-intellij-language-injection: PythonRegExp
-  dns.regex:
-    oneOf:
+          group:
+            type: string
       - type: object
-        additionalProperties: false
-        allOf:
-          - $ref: '#/definitions/dns.regex.base'
-          - type: object
-            required:
-              - identification
-            properties:
-              identification:
-                type: string
-                pattern: ^[\w:]+$
-                title: Service identification tag
-                description:
-                  This will be appended to the end as DNS::REGEX::name::identification.upper()
+        properties:
+          group:
+            type: number
+  regex:
+    allOf:
       - type: object
-        additionalProperties: false
-        allOf:
-          - $ref: '#/definitions/dns.regex.base'
+        required:
+          - name
+        properties:
+          name:
+            type: string
+            pattern: ^[\w:]+$
+      - oneOf:
+          - $ref: '#/definitions/regex-pattern'
           - type: object
-            required:
-              - group
             properties:
-              group:
-                type:
-                  - integer
-                  - string
-                minimum: 1
-                minLength: 1
-                title: Service identification tag
-                description:
-                  This will be appended to the end as DNS::REGEX::name::match.group(group).upper()
-  dns.dynamic:
+              patterns:
+                type: array
+                items:
+                  $ref: '#/definitions/regex-pattern'
+                uniqueItems: true
+                minItems: 1
+  dynamic:
     type: object
     title: Complex Factory for Rules
     required:
@@ -192,40 +138,21 @@ definitions:
         title: Dynamic actions by invoking python code
         description: |+2
           Dynamic rules are defined as code snippets with one or two methods
-                  
+        
           An init method that is invoked once after creation
         
             def init() -> None:
-                add_rule(Type.TXT, ...)
+                ...
         
           A process function that is invoked once for each record
         
-            def process(record: Record) -> Result:
-                add_rule(...)
-                return record.result()
-        
-          Both of these functions have access to the following rule creation method:
-        
-            def add_rule(
-                    record_type: Union[str, int, RRType],
-                    rule_type: str,
-                    name: str,
-                    *,
-                    priority: int = 0,
-                    **options,
-            ) -> None:
-                """
-                :param record_type: Valid DNS record type as text, int, or type
-                :param rule_type:   Valid rule type factory e.g. dns.regex
-                :param name:        Name of the created rule
-                :param priority:    Priority for the created rule, default 0
-                :param options:     Any additional options for the rule factory
-                """
+            def process(record: Record, result: Result):
+                ...
         
           The only globals passed to these methods are:
         
           - \_\_builtins\_\_
-          - RRType, Record, Result, Domain, Tag, Config
+          - RRType, Record, Result, Domain, Config
               - The Config contains the `config` property passed to the rule from YAML
           - add_rule
           - Any additional globals created by the code itself
@@ -239,36 +166,15 @@ definitions:
         
           - The init function is invoked exactly once.
           - The process function is invoked exactly once for every single Record.
-          - Any rules created from the init method will be invoked for every suitable record.
-          - Any rules created from the process method will be invoked for suitable records found after creation.
-          - Creating DynamicRules from init or process is considered undefined behaviour and care should be taken
-            - The user should call init manually and include fail-safes for only calling it once
-            - The add_rule callback might not be available so you need to pass it manually to the rule
         x-intellij-language-injection:
           language: Python
           prefix: |+0
             from types import SimpleNamespace
             from typing import Union
             
-            from dnsmule.definitions import RRType, Record, Result, Domain, Tag
+            from dnsmule import RRType, Record, Result, Domain
             
             Config: SimpleNamespace
-            
-            
-            def add_rule(
-                    record_type: Union[str, int, RRType],
-                    rule_type: str,
-                    name: str,
-                    *,
-                    priority: int = 0,
-                    **options,
-            ) -> None:
-                """
-                :param record_type: Valid DNS record type as text, int, or type
-                :param rule_type:   Valid rule type factory e.g. dns.regex
-                :param name:        Name of the created rule
-                :param priority:    Priority for the created rule, default 0
-                :param options:     Any additional options for the rule factory
-                """
+          
 
           suffix: ''

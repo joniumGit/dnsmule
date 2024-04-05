@@ -10,4 +10,4 @@ except ImportError:
     """
     from logging import getLogger
 
-    getLogger('dnsmule').warning('DNSPython not available')
+    getLogger('dnsmule').debug('DNSPython not available')

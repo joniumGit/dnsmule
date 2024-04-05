@@ -11,11 +11,13 @@ from dns.rrset import RRset
 
 from ..api import Backend, Record, Domain, RRType
 
+LOGGER = 'dnsmule.backends.dnspython'
+
 
 def default_query(query: Message, *args, **kwargs):
     response, used_tcp = udp_with_fallback(query, *args, **kwargs)
     if used_tcp:
-        getLogger('dnsmule.dns').debug('Used TCP fallback query\n%s', query)
+        getLogger(LOGGER).debug('Used TCP fallback query\n%s', query)
     return response
 
 
@@ -84,14 +86,14 @@ class DNSPythonBackend(Backend):
         self.timeout = timeout
         self.querier = querier
         self.resolver = resolver
-        self._logger = getLogger('dnsmule.dns')
+        self._logger = getLogger(LOGGER)
         try:
             self._querier = DNSPythonBackend._SUPPORTED_QUERY_TYPES[self.querier]
         except KeyError:
             raise ValueError(f'Invalid query mode ({self.querier})')
         if not self.resolver:
             self.resolver = Resolver().nameservers[0]
-        self._logger.info('DNSPYTHON: Resolver: %s', self.resolver)
+        self._logger.debug('Resolver: %s', self.resolver)
 
     def _dns_query(
             self,

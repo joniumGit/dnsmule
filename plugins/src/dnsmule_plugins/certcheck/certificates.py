@@ -70,7 +70,7 @@ def collect_certificate_cryptography(address: Address, timeout: float):
     except ImportError:
         pass
     except Exception as e:
-        getLogger(LOGGER).warning(
+        getLogger(LOGGER).debug(
             'CERTS-CRYPTOGRAPHY: Failed to get cert for %s:%s (%s)',
             *address.tuple[0:2],
             repr(e),
@@ -126,7 +126,7 @@ def collect_certificate_stdlib(address: Address, timeout: float):
                 s.connect(address.tuple)
                 return massage_certificate_stdlib(s.getpeercert(binary_form=False))
     except Exception as e:
-        getLogger(LOGGER).warning(
+        getLogger(LOGGER).debug(
             'CERTS-STDLIB: Failed to get cert for %s:%s (%s)',
             *address.tuple[0:2],
             repr(e),

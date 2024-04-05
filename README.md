@@ -1,4 +1,4 @@
-# DNSMule
+# DNSMule (WIP)
 
 [![codecov](https://codecov.io/gh/joniumGit/dnsmule/branch/master/graph/badge.svg?token=54DPREJIFU)](https://codecov.io/gh/joniumGit/dnsmule)
 
@@ -23,13 +23,45 @@ pip install -e .
 
 ## Overview
 
-The DNSMule tool is composed in the following way:
+The DNSMule tool takes YAML config as input and uses it to scan a domain:
 
-- DNSMule
-    - Backend
-    - Rules
-        - Rule
-    - Plugins
+```shell
+python -m dnsmule --config rules/rules.yml example.com
+```
+
+This wil give output similar to this:
+
+````json
+{
+    "name": "example.com",
+    "types": [
+        "TXT",
+        "A"
+    ],
+    "tags": [],
+    "data": {
+        "resolvedCertificates": [
+            {
+                "version": "v3",
+                "common": "www.example.org",
+                "alts": [
+                    "www.example.org",
+                    "example.net",
+                    "example.edu",
+                    "example.com",
+                    "example.org",
+                    "www.example.com",
+                    "www.example.edu",
+                    "www.example.net"
+                ],
+                "issuer": "CN=DigiCert Global G2 TLS RSA SHA256 2020 CA1,O=DigiCert Inc,C=US",
+                "valid_until": "2025-03-01T23:59:59",
+                "valid_from": "2024-01-30T00:00:00"
+            }
+        ]
+    }
+}
+````
 
 ## Examples
 
@@ -43,54 +75,52 @@ The tool configuration is done through one or multiple rule configuration files.
 [schema file](rules/rules-schema.yml). In addition to some builtin rule types, it is possible to create new types by
 registering handlers or rules programmatically.
 
-Rules support registration per DNS record type and priority for controlling invocation order.
+Rules support registration per DNS record type, as well as batch or any types:
 
 ```yaml
-version: '0.0.1'
+plugins:
+  - 'sample_module'
+
+storage:
+  type: 'dict'
+  config: { }
+
+backend:
+  type: 'data'
+  config:
+    'example.com':
+      - name: 'example.com'
+        type: 'A'
+        data: '127.0.0.1'
+
 rules:
-  - name: o365
-    priority: 10
-    type: dns.regex
-    record: txt
+  - name: 'Sample'
+    type: 'sample'
+    record: 'any'
+
+  - name: 'Match digits'
+    type: 'regex'
+    record: 'A'
     config:
-      pattern: '^MS=ms'
-      identification: MICROSOFT::O365
-  - name: ses
-    type: dns.regex
-    record: txt
+      name: 'TEST'
+      regex: '\d+'
+      label: 'label'
+
+  - name: 'Add timestamp'
+    type: 'timestamp'
+    record: 'batch'
+  
+  - name: 'Mark as test'
+    type: 'dynamic'
+    record: 'any'
     config:
-      pattern: '^amazonses:'
-      identification: AMAZON::SES
+      code: |
+        from dnsmule.utils import extend_set
+        
+        
+        def process(record: Record, result: Result):
+            result.data['test'] = True
 ```
-
-#### Example
-
-```python
-from dnsmule.definitions import Record, Result
-from dnsmule.rules import Rules, Rule
-
-rules: Rules
-
-...
-
-
-@rules.add.A[10]
-def my_scan(record: Record) -> Result:
-    from dnsmule.logger import get_logger
-    get_logger().info('Address %s', record)
-    return record.tag('MY::SCAN')
-
-
-@rules.register('my.rule')
-def create_my_rule(**arguments) -> Rule:
-    ...
-```
-
-Here the `add` is used to directly register a new rule into the ruleset with a given priority. The `register` call
-creates a new handler for rules of type `my.rule`. Any future `my.rule` creations from YAML or code would be routed to
-this factory function.
-
-See the examples folder for more examples and how to use rules in code.
 
 ### Plugins and Backends
 
@@ -117,13 +147,13 @@ It is possible to define a single backend in a YAML file:
 
 ```yaml
 backend:
-  name: 'dnspython.DNSPythonBackend'
+  name: 'dnspython'
   config:
     timeout: 5.5
     resolver: 8.8.8.8
 ```
 
-The backend must extend the `dnsmule.backends.Backend` class.
+The backend should extend the `dnsmule.backends.Backend` class or function in a similar way.
 This declaration is ignored if this is not used in `DNSMule.load` or `DNSMule(file=file)`.
 
 ## Editor Support

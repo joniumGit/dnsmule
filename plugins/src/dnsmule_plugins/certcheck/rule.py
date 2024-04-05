@@ -7,7 +7,7 @@ from .adapter import load_result, save_result
 
 
 class CertChecker:
-    id = 'ip.certs'
+    type = 'ip.certs'
 
     def __init__(
             self,

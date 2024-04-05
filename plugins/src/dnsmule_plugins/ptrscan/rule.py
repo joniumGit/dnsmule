@@ -5,7 +5,7 @@ from dnsmule.utils import extend_set
 
 
 class PTRScan:
-    id = 'ip.ptr'
+    type = 'ip.ptr'
 
     context: dict
 

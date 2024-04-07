@@ -24,7 +24,7 @@ def txt_stripped(line):
 
 def load_data(file: Union[str, Path], limit: int = -1):
     """
-    Loads target data from either a .csv of .txt file
+    Loads target data from either a .csv or .txt file
 
     If the file is a .csv file it is assumed to be of the form:
 

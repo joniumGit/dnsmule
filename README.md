@@ -1,11 +1,55 @@
-# DNSMule (WIP)
+# DNSMule
 
 [![codecov](https://codecov.io/gh/joniumGit/dnsmule/branch/master/graph/badge.svg?token=54DPREJIFU)](https://codecov.io/gh/joniumGit/dnsmule)
 
 Package for rule based dependency scanning and service fingerprinting via DNS.
 
-This package provides utilities for writing and evaluating verbose and easy to read rule definitions in _YAML_-format.
-There are two builtin rule formats with more available as plugins.
+This package provides utilities for writing and evaluating verbose and easy to read rule definitions in YAML-format.
+There some builtin rule formats with more available as plugins.
+
+## Note: 0.8.0 is not compatible with 0.5.0
+
+Due to needing the implementation to be less bloated, teh structure was changed.
+There is now much less code and useless features were removed.
+
+Here is the gist:
+
+- The API has been slimmed down
+    - Almost no "hacked" attributes
+        - Only the `context` is "injected" into rules when processing
+        - Context contains `mule`, `rules`, `storage` and `backend`
+    - Record has had its `result` property removed
+    - Record has been simplified
+    - Everything is now optionally a context manager
+        - Allows easy initialization and de-initialization
+        - Storage, Mule and Backend are entered together
+        - Rules are entered once per scan
+    - Rules were reworked to be simple callables
+        - New signature `__call__(Record, Result) -> None`
+        - Scan result is now explicitly given to the rule
+        - Result is modified by the rule and nothing is returned to reduce complexity
+        - Removed rule priority
+            - Now simply respects insertion order
+        - Added batch rules
+            - Signature `__call__(List[Record], Result) -> None`
+            - Batches are run at the end of processing
+        - Added ANY matching rules
+            - Will get called using all produced records
+            - Note: Only record types with active rules are scanned
+        - Created additional built-in rule types
+        - Storage was slimmed down
+            - Now a storage simply has `store` and `fetch`
+            - Additional storage types for databses
+        - Backends were simplified
+            - Added some utility backends
+- Redesigned the YAML loader and Plugin handling
+    - Now there is no hacky loading going on
+    - Plugins are implicit and do no hooking
+    - Plugins only extend rule, storage and backend type scan options
+- Example server was removed completely
+    - Did not have time to rewrite it yet
+    - Nearly useless without search
+- Adds a command line runner for rules (WIP)
 
 ## Installation
 
@@ -18,7 +62,7 @@ This will install everything available for DNSMule. You can also choose to insta
 For installing from the repo you can use:
 
 ```shell
-pip install -e .
+pip install -e . ./plugins
 ```
 
 ## Overview
@@ -29,43 +73,25 @@ The DNSMule tool takes YAML config as input and uses it to scan a domain:
 python -m dnsmule --config rules/rules.yml example.com
 ```
 
-This wil give output similar to this:
+This will give output like:
 
 ````json
 {
-    "name": "example.com",
-    "types": [
-        "TXT",
-        "A"
-    ],
-    "tags": [],
-    "data": {
-        "resolvedCertificates": [
-            {
-                "version": "v3",
-                "common": "www.example.org",
-                "alts": [
-                    "www.example.org",
-                    "example.net",
-                    "example.edu",
-                    "example.com",
-                    "example.org",
-                    "www.example.com",
-                    "www.example.edu",
-                    "www.example.net"
-                ],
-                "issuer": "CN=DigiCert Global G2 TLS RSA SHA256 2020 CA1,O=DigiCert Inc,C=US",
-                "valid_until": "2025-03-01T23:59:59",
-                "valid_from": "2024-01-30T00:00:00"
-            }
-        ]
-    }
+  "name": "example.com",
+  "types": [
+    "TXT",
+    "A"
+  ],
+  "tags": [],
+  "data": {}
 }
 ````
 
 ## Examples
 
-Check out the examples in the [examples](examples) folder. They should get you up and running quickly.
+Check out the examples in the [examples](examples) folder.
+They should get you up and running quickly.
+The examples show some of the features available in DNSMule.
 
 ## YAML Configuration
 
@@ -109,52 +135,18 @@ rules:
   - name: 'Add timestamp'
     type: 'timestamp'
     record: 'batch'
-  
+
   - name: 'Mark as test'
     type: 'dynamic'
     record: 'any'
     config:
       code: |
         from dnsmule.utils import extend_set
-        
-        
+
+
         def process(record: Record, result: Result):
             result.data['test'] = True
 ```
-
-### Plugins and Backends
-
-#### Plugins
-
-It is possible to register plugins using the YAML file:
-
-```yaml
-plugins:
-  - name: dnsmule_plugins.CertCheckPlugin
-    config:
-      callback: false
-```
-
-These are required to extend the `dnsmule.plugins.Plugin` class.
-Plugins are evaluated and initialized before rules.
-Any rules requiring a plugin should list their plugin in this block.
-Plugins are only initialized once and if a plugin already exists in the receiving DNSMule instance
-it will be ignored.
-
-#### Backends
-
-It is possible to define a single backend in a YAML file:
-
-```yaml
-backend:
-  name: 'dnspython'
-  config:
-    timeout: 5.5
-    resolver: 8.8.8.8
-```
-
-The backend should extend the `dnsmule.backends.Backend` class or function in a similar way.
-This declaration is ignored if this is not used in `DNSMule.load` or `DNSMule(file=file)`.
 
 ## Editor Support
 
@@ -182,41 +174,7 @@ x-intellij-language-injection:
 Currently, this supports `dns.regex` pattern regex language injection and `dns.dynamic` rule code language injection.
 Type hints and quick documentation are available.
 
-## Builtin Rules
-
-#### Regex rules
-
-Regex rules can be defined with either one `pattern` or multiple `patterns`.
-An example is in the following snippet:
-
-```yml
-rules:
-  - name: test
-    type: dns.regex
-    record: txt
-    config:
-      pattern: '^.*\.hello_world\.'
-      identification: HELLO::WORLD
-      flags:
-        - UNICODE
-        - DOTALL
-  - name: generic_verification
-    type: dns.regex
-    record: txt
-    priority: 10
-    description: Generic Site Regex Collection
-    config:
-      patterns:
-        - '^(.+)(?:-(?:site|domain))?-verification='
-        - '^(.+)(?:site|domain)verification'
-        - '^(.+)_verify_'
-        - '^(\w+)-code:'
-      group: 1
-```
-
-The full definition and additional info is available from the schema file, examples, and code.
-
-#### Dynamic Rules
+## Dynamic Rules
 
 Dynamic rules are defined as code snippets with one or two methods
 
@@ -224,77 +182,36 @@ An init method that is invoked once after creation
 
 ```python
 def init() -> None:
-    add_rule(...)
+    ...
 ```
 
 A process function that is invoked once for each record
 
 ```python
-def process(record: Record) -> Result:
-    add_rule(...)
-    return record.result()
-```
-
-Both of these functions have access to the following rule creation method:
-
-```python
-def add_rule(
-        record_type: Union[str, int, RRType],
-        rule_type: str,
-        name: str,
-        *,
-        priority: int = 0,
-        **options,
-) -> None:
-    """
-    :param record_type: Valid DNS record type as text, int, or type
-    :param rule_type:   Valid rule type factory e.g. dns.regex
-    :param name:        Name of the created rule
-    :param priority:    Priority for the created rule, default 0
-    :param options:     Any additional options for the rule factory
-    """
+def process(record: Record, result: Result) -> None:
+    ...
 ```
 
 The only globals passed to these methods are:
 
 - \_\_builtins\_\_
-- RRType, Record, Result, Domain, Tag, Config
+- RRType, Record, Result, Domain, Config
     - The Config contains the `config` property passed to the rule from YAML
-- add_rule
 - Any additional globals created by the code itself
 
 When the code is exec'd the result is inspected for:
 
-- init function without parameters
-- process function with a single parameter
+- init function
+- process function
 
 Some notes:
 
-- The init function is invoked exactly once.
-- The process function is invoked exactly once for every single Record.
-- Any rules created from the init method will be invoked for every suitable record.
-- Any rules created from the process method will be invoked for suitable records found after creation.
-- Creating DynamicRules from init or process is considered undefined behaviour and care should be taken
-    - The user should call init manually and include fail-safes for only calling it once
-    - The add_rule callback might not be available so you need to pass it manually to the rule
+- The init function is invoked every time the rule context is entered
+    - Take note that this happens on every scan
+- The process function is invoked exactly once for a single Record
+- Any rules created from the init method will be invoked for every suitable record
 
-## Other
+## Notice
 
-### Example server
-
-The repo has a `Dockerfile` for easily running the tool using an example server in Docker:
-
-```shell
-$ ./build-image
-$ ./run-server
-```
-
-### Notice
-
-This package is under active development.
-
-### Additional
-
-- RnD Scripts under [scripts](scripts)
-- Example server under [server](server)
-- Examples for coding under [examples](examples)
+This package is under development.
+Pull requests are welcome, but will only be accepted after 0.8.0 is complete and my thesis is done.

@@ -1,16 +1,11 @@
 from json import loads, dumps
 from typing import Optional
 
-from ..api import Storage, Domain, Result, RRType
-from ..utils import jsonize
+from .key_value import AbstractKVStorage
 
 
-class RedisStorage(Storage):
+class RedisStorage(AbstractKVStorage):
     type = 'redis'
-
-    def __init__(self, **config):
-        super().__init__()
-        self.config = config
 
     def __enter__(self):
         import redis
@@ -21,23 +16,6 @@ class RedisStorage(Storage):
     def __exit__(self, *_):
         self._client.close()
         del self._client
-
-    def store(self, result: Result):
-        self._set(result.name, {
-            'types': sorted(RRType.to_text(value) for value in result.types),
-            'tags': sorted(result.tags),
-            'data': result.data,
-        })
-
-    def fetch(self, domain: Domain) -> Optional[Result]:
-        json_data = self._get(domain)
-        if json_data:
-            return Result(
-                name=domain,
-                types={RRType.from_any(value) for value in json_data['types']},
-                tags={*json_data['tags']},
-                data=jsonize(json_data['data']),
-            )
 
     def _set(self, key: str, value: dict) -> None:
         self._client.set(key, dumps(value))

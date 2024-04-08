@@ -17,4 +17,4 @@ from .loader import (
 from .rules import *
 from .storages import *
 
-__version__ = '0.8.0'
+__version__ = '0.8.0rc1'

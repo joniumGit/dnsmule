@@ -168,7 +168,7 @@ definitions:
           - The process function is invoked exactly once for every single Record.
         x-intellij-language-injection:
           language: Python
-          prefix: |+0
+          prefix: |
             from types import SimpleNamespace
             from typing import Union
             
